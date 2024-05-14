@@ -15,6 +15,12 @@
     // Once all dependencies are fetched, `zig build` no longer requires
     // internet connectivity.
     .dependencies = .{
+        // TODO this version is NOT for zig 0.12.0 - needs a patch to src/signals/delegate.zig
+        .entt = .{
+            .url = "https://github.com/prime31/zig-ecs/archive/refs/heads/master.tar.gz",
+            .hash = "12200f77411ec939c18d42050c349b9e826932a7c45449975f54ab508fb5cbe6ecbd",
+        },
+
         // See `zig fetch --save <url>` for a command-line interface for adding dependencies.
         //.example = .{
         //    // When updating this field to a new URL, be sure to delete the corresponding

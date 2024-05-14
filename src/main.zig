@@ -1,12 +1,17 @@
 const std = @import("std");
+const ecs = @import("entt");
+
 const console = @import("console.zig");
 const input_handlers = @import("input_handlers.zig");
 const Terminal = @import("Terminal.zig");
+const components = @import("components.zig");
 
 var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
 const allocator = arena.allocator();
 
 pub fn main() !void {
+    var reg = ecs.Registry.init(allocator);
+
     const in = std.io.getStdIn();
     const oldMode = console.setMode(in, console.ConsoleMode.ENABLE_WINDOW_INPUT);
 
@@ -14,10 +19,22 @@ pub fn main() !void {
     if (!out.supportsAnsiEscapeCodes()) return error.ConsoleDoesNotSupportAnsi;
 
     const screen = console.getSize(out);
-    var player_x = @divTrunc(screen.width, 2);
-    var player_y = @divTrunc(screen.height, 2);
 
-    var term = Terminal.init(std.io.bufferedWriter(out.writer()), allocator);
+    const player = reg.create();
+    reg.add(player, components.Position{
+        .x = @divTrunc(screen.width, 2),
+        .y = @divTrunc(screen.height, 2),
+    });
+    reg.add(player, components.Glyph{ .ch = "@" });
+
+    var view = reg.view(.{ components.Glyph, components.Position }, .{});
+
+    var term = Terminal.init(
+        std.io.bufferedWriter(out.writer()),
+        screen.width,
+        screen.height,
+        allocator,
+    );
     try term.setWindowTitle("Ziglike");
     try term.clear();
     try term.at(0, 0);
@@ -32,7 +49,13 @@ pub fn main() !void {
     var game_running = true;
     while (game_running) {
         if (redraw) {
-            try term.printAt(player_x, player_y, "@");
+            var iter = view.entityIterator();
+            while (iter.next()) |entity| {
+                const pos = view.getConst(components.Position, entity);
+                const glyph = view.getConst(components.Glyph, entity);
+                try term.printAt(pos.x, pos.y, glyph.ch);
+            }
+
             try term.printAt(0, 0, "Press ESCAPE to quit");
             try term.present();
             try term.clear();
@@ -48,8 +71,9 @@ pub fn main() !void {
                             game_running = false;
                         },
                         .movement => |move| {
-                            player_x += move.dx;
-                            player_y += move.dy;
+                            var position = reg.get(components.Position, player);
+                            position.x += move.dx;
+                            position.y += move.dy;
                             redraw = true;
                         },
                     };

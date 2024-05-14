@@ -5,6 +5,8 @@ pub fn Terminal(comptime BufferedType: type) type {
     return struct {
         allocator: std.mem.Allocator,
         buffered: BufferedType,
+        width: i16,
+        height: i16,
 
         const Self = @This();
 
@@ -46,6 +48,16 @@ pub fn Terminal(comptime BufferedType: type) type {
     };
 }
 
-pub fn init(buffered: anytype, allocator: std.mem.Allocator) Terminal(@TypeOf(buffered)) {
-    return .{ .buffered = buffered, .allocator = allocator };
+pub fn init(
+    buffered: anytype,
+    width: i16,
+    height: i16,
+    allocator: std.mem.Allocator,
+) Terminal(@TypeOf(buffered)) {
+    return .{
+        .buffered = buffered,
+        .width = width,
+        .height = height,
+        .allocator = allocator,
+    };
 }
