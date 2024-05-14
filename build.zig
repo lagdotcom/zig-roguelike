@@ -15,9 +15,11 @@ pub fn build(b: *std.Build) void {
     // set a preferred release mode, allowing the user to decide how to optimize.
     const optimize = b.standardOptimizeOption(.{});
 
+    const mainZig: std.Build.LazyPath = .{ .path = "src/main.zig" };
+
     const exe = b.addExecutable(.{
         .name = "zig-roguelike",
-        .root_source_file = b.path("src/main.zig"),
+        .root_source_file = mainZig,
         .target = target,
         .optimize = optimize,
     });
@@ -27,6 +29,7 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
     exe.root_module.addImport("entt", entt.module("zig-ecs"));
+    // exe.addModule("entt", entt.module("zig-ecs"));
 
     // This declares intent for the executable to be installed into the
     // standard location when the user invokes the "install" step (the default
@@ -59,7 +62,7 @@ pub fn build(b: *std.Build) void {
     // Creates a step for unit testing. This only builds the test executable
     // but does not run it.
     const exe_unit_tests = b.addTest(.{
-        .root_source_file = b.path("src/main.zig"),
+        .root_source_file = mainZig,
         .target = target,
         .optimize = optimize,
     });
