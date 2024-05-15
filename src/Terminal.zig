@@ -1,6 +1,7 @@
 const std = @import("std");
 
 const ansi = @import("ansi.zig");
+const colours = @import("colours.zig");
 const console = @import("console.zig");
 
 pub const Terminal = struct {
@@ -67,6 +68,10 @@ pub const Terminal = struct {
 
     pub fn softReset(self: *Self) !void {
         _ = try self.buffer.write(ansi.soft_reset);
+    }
+
+    pub fn setForegroundColour(self: *Self, rgb: colours.RGB8) !void {
+        try self.buffer.writer().print(ansi.sgr_foreground_rgb, .{ rgb.r, rgb.g, rgb.b });
     }
 
     pub inline fn contains(self: *Self, x: i16, y: i16) bool {
