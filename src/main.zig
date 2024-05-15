@@ -14,6 +14,8 @@ const Position = components.Position;
 
 const Engine = @import("Engine.zig").Engine;
 
+const GameMap = @import("GameMap.zig").GameMap;
+
 var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
 const allocator = arena.allocator();
 
@@ -26,20 +28,26 @@ pub fn main() !void {
 
     var reg = Registry.init(allocator);
 
-    var engine = Engine.init(events, &reg, term);
+    var map = try GameMap.init(allocator, 80, 45);
+    defer map.deinit();
+
+    const centre_x = @divTrunc(map.width, 2);
+    const centre_y = @divTrunc(map.height, 2);
+
+    var engine = Engine.init(events, map, &reg, term);
 
     const player = reg.create();
     reg.add(player, Position{
-        .x = @divTrunc(term.width, 2),
-        .y = @divTrunc(term.height, 2),
+        .x = @intCast(centre_x),
+        .y = @intCast(centre_y),
     });
     reg.add(player, Glyph{ .ch = '@', .colour = colours.White });
     engine.setPlayer(player);
 
     const npc = reg.create();
     reg.add(npc, Position{
-        .x = @divTrunc(term.width, 2) - 5,
-        .y = @divTrunc(term.height, 2),
+        .x = @intCast(centre_x - 5),
+        .y = @intCast(centre_y),
     });
     reg.add(npc, Glyph{ .ch = '@', .colour = colours.Yellow });
 

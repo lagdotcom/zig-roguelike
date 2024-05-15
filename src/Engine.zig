@@ -16,18 +16,22 @@ const Glyph = components.Glyph;
 const IsPlayer = components.IsPlayer;
 const Position = components.Position;
 
+const GameMap = @import("GameMap.zig").GameMap;
+
 pub const Engine = struct {
     drawables: entt.MultiView(2, 0),
     event_manager: EventManager,
+    map: GameMap,
     player: Entity,
     registry: *Registry,
     running: bool,
     terminal: Terminal,
 
-    pub fn init(event_manager: EventManager, registry: *Registry, terminal: Terminal) Engine {
+    pub fn init(event_manager: EventManager, map: GameMap, registry: *Registry, terminal: Terminal) Engine {
         return Engine{
             .drawables = registry.view(.{ Glyph, Position }, .{}),
             .event_manager = event_manager,
+            .map = map,
             .player = 0,
             .registry = registry,
             .running = false,
@@ -41,8 +45,10 @@ pub const Engine = struct {
     }
 
     fn render(self: *Engine) !void {
+        try self.map.draw(&self.terminal);
+
         try self.terminal.setForegroundColour(colours.White);
-        try self.terminal.printAt(0, 0, "Press ESCAPE to quit", .{});
+        try self.terminal.printAt(self.terminal.width - 20, self.terminal.height - 1, "Press ESCAPE to quit", .{});
 
         var iter = self.drawables.entityIterator();
         while (iter.next()) |entity| {
@@ -51,20 +57,15 @@ pub const Engine = struct {
 
             if (self.terminal.contains(pos.x, pos.y)) {
                 try self.terminal.setForegroundColour(glyph.colour);
-                try self.terminal.printAt(
-                    pos.x,
-                    pos.y,
-                    "{c}",
-                    .{glyph.ch},
-                );
+                try self.terminal.printAt(pos.x, pos.y, "{c}", .{glyph.ch});
             }
         }
 
         try self.terminal.present();
-        try self.terminal.clear();
+        // try self.terminal.clear();
     }
 
-    fn handle_events(self: *Engine) void {
+    fn handle_events(self: *Engine) !void {
         for (self.event_manager.wait()) |event| {
             switch (event) {
                 .key => |key| {
@@ -76,10 +77,20 @@ pub const Engine = struct {
                         },
                         .movement => |move| {
                             var position = self.registry.get(Position, self.player);
-                            position.x += move.dx;
-                            position.y += move.dy;
+
+                            const dest_x = position.x + move.dx;
+                            const dest_y = position.y + move.dy;
+
+                            if (self.map.in_bounds(dest_x, dest_y) and self.map.getTile(dest_x, dest_y).walkable) {
+                                position.x = dest_x;
+                                position.y = dest_y;
+                            }
                         },
                     };
+                },
+
+                .size => |size| {
+                    try self.terminal.resize(size.dwSize.X, size.dwSize.Y);
                 },
 
                 else => {},
@@ -92,7 +103,7 @@ pub const Engine = struct {
 
         while (self.running) {
             try self.render();
-            self.handle_events();
+            try self.handle_events();
         }
     }
 };
