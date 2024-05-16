@@ -81,7 +81,7 @@ pub const Engine = struct {
                             const dest_x = position.x + move.dx;
                             const dest_y = position.y + move.dy;
 
-                            if (self.map.in_bounds(dest_x, dest_y) and self.map.getTile(dest_x, dest_y).walkable) {
+                            if (self.map.contains(dest_x, dest_y) and self.map.getTile(dest_x, dest_y).walkable) {
                                 position.x = dest_x;
                                 position.y = dest_y;
                             }

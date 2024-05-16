@@ -4,13 +4,15 @@ const Allocator = std.mem.Allocator;
 const t = @import("Tile.zig");
 const Terminal = @import("Terminal.zig").Terminal;
 
+const p = @import("procgen.zig");
+
 pub const GameMap = struct {
     allocator: Allocator,
     width: usize,
     height: usize,
     tiles: []t.Tile,
 
-    pub fn init(allocator: Allocator, comptime width: usize, comptime height: usize) !GameMap {
+    pub fn init(allocator: Allocator, width: usize, height: usize) !GameMap {
         const map = GameMap{
             .allocator = allocator,
             .width = width,
@@ -18,17 +20,11 @@ pub const GameMap = struct {
             .tiles = try allocator.alloc(t.Tile, width * height),
         };
 
-        for (0..height) |y| {
-            for (0..width) |x| {
-                try map.setTile(@intCast(x), @intCast(y), t.floor);
-            }
-        }
-
-        if (width >= 33 and height >= 22) for (30..33) |y| {
-            try map.setTile(@intCast(y), 22, t.wall);
-        };
-
         return map;
+    }
+
+    pub fn deinit(self: GameMap) void {
+        self.allocator.free(self.tiles);
     }
 
     pub inline fn contains(self: GameMap, x: i16, y: i16) bool {
@@ -45,11 +41,22 @@ pub const GameMap = struct {
     }
 
     pub fn getTile(self: GameMap, x: i16, y: i16) t.Tile {
-        return if (self.contains(x, y)) self.tiles[self.getIndex(x, y)] else t.floor;
+        return if (self.contains(x, y)) self.tiles[self.getIndex(x, y)] else t.wall;
     }
 
-    pub fn deinit(self: GameMap) void {
-        self.allocator.free(self.tiles);
+    pub fn fill(self: GameMap, tile: t.Tile) !void {
+        for (0..self.height) |y| {
+            for (0..self.width) |x| {
+                try self.setTile(@intCast(x), @intCast(y), tile);
+            }
+        }
+    }
+
+    pub fn carve(self: GameMap, room: p.RectangularRoom) !void {
+        var iter = room.inner().iterate();
+        while (iter.next()) |point| {
+            try self.setTile(point.x, point.y, t.floor);
+        }
     }
 
     pub fn draw(self: GameMap, term: *Terminal) !void {

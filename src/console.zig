@@ -1,4 +1,7 @@
 const std = @import("std");
+const Allocator = std.mem.Allocator;
+const File = std.fs.File;
+
 const windows = @import("arch/windows.zig");
 
 pub const ConsoleMode = struct {
@@ -31,7 +34,7 @@ const ReadConsoleExFlags = struct {
     pub const NoWait = 0x2;
 };
 
-pub fn setMode(in: std.fs.File, mode: u32) u32 {
+pub fn setMode(in: File, mode: u32) u32 {
     var oldMode: u32 = undefined;
     _ = windows.GetConsoleMode(in.handle, &oldMode);
     _ = windows.SetConsoleMode(in.handle, mode);
@@ -44,7 +47,7 @@ pub const ConsoleSize = struct {
     height: i16,
 };
 
-pub fn getSize(out: std.fs.File) ConsoleSize {
+pub fn getSize(out: File) ConsoleSize {
     var info: windows.CONSOLE_SCREEN_BUFFER_INFO = undefined;
     _ = windows.GetConsoleScreenBufferInfo(out.handle, &info);
 
@@ -52,13 +55,13 @@ pub fn getSize(out: std.fs.File) ConsoleSize {
 }
 
 pub const EventManager = struct {
-    allocator: std.mem.Allocator,
+    allocator: Allocator,
     raw_events: []windows.INPUT_RECORD_W,
     events: []ConsoleInputEvent,
-    file: std.fs.File,
+    file: File,
     old_mode: u32,
 
-    pub fn init(allocator: std.mem.Allocator, size: usize, file: std.fs.File) !EventManager {
+    pub fn init(allocator: Allocator, size: usize, file: File) !EventManager {
         const old_mode = setMode(
             file,
             ConsoleMode.ENABLE_WINDOW_INPUT | ConsoleMode.ENABLE_PROCESSED_INPUT,

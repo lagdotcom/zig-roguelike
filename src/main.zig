@@ -15,6 +15,7 @@ const Position = components.Position;
 const Engine = @import("Engine.zig").Engine;
 
 const GameMap = @import("GameMap.zig").GameMap;
+const procgen = @import("procgen.zig");
 
 var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
 const allocator = arena.allocator();
@@ -26,30 +27,27 @@ pub fn main() !void {
     const events = try EventManager.init(allocator, 100, std.io.getStdIn());
     defer events.deinit();
 
-    var reg = Registry.init(allocator);
+    var prng = std.rand.DefaultPrng.init(blk: {
+        var seed: u64 = undefined;
+        try std.posix.getrandom(std.mem.asBytes(&seed));
+        break :blk seed;
+    });
+    const rand = prng.random();
 
     var map = try GameMap.init(allocator, 80, 45);
     defer map.deinit();
+    var start = procgen.Point{ .x = 0, .y = 0 };
+    try procgen.generate_dungeon(rand, map, 10, 6, 30, &start);
 
-    const centre_x = @divTrunc(map.width, 2);
-    const centre_y = @divTrunc(map.height, 2);
+    var reg = Registry.init(allocator);
+    defer reg.deinit();
 
     var engine = Engine.init(events, map, &reg, term);
 
     const player = reg.create();
-    reg.add(player, Position{
-        .x = @intCast(centre_x),
-        .y = @intCast(centre_y),
-    });
+    reg.add(player, Position{ .x = start.x, .y = start.y });
     reg.add(player, Glyph{ .ch = '@', .colour = colours.White });
     engine.setPlayer(player);
-
-    const npc = reg.create();
-    reg.add(npc, Position{
-        .x = @intCast(centre_x - 5),
-        .y = @intCast(centre_y),
-    });
-    reg.add(npc, Glyph{ .ch = '@', .colour = colours.Yellow });
 
     try engine.run();
 }
