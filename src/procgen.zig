@@ -1,10 +1,9 @@
 const std = @import("std");
 const Random = std.rand;
 
+const Point = @import("common.zig").Point;
 const GameMap = @import("GameMap.zig").GameMap;
 const t = @import("Tile.zig");
-
-pub const Point = struct { x: i16, y: i16 };
 
 pub const RectangularRoom = struct {
     x1: i16,

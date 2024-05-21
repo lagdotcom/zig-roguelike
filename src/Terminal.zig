@@ -46,7 +46,6 @@ pub const Terminal = struct {
     pub fn resize(self: *Self, width: i16, height: i16) !void {
         self.width = width;
         self.height = height;
-        try self.setBackgroundColour(colours.Black);
         try self.clear();
     }
 
@@ -63,6 +62,7 @@ pub const Terminal = struct {
     }
 
     pub fn clear(self: *Self) !void {
+        try self.setBackgroundColour(colours.Black);
         try self.at(0, 0);
         _ = try self.buffer.write(ansi.erase_in_display_to_end);
     }

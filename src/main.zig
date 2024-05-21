@@ -36,7 +36,7 @@ pub fn main() !void {
 
     var map = try GameMap.init(allocator, 80, 45);
     defer map.deinit();
-    var start = procgen.Point{ .x = 0, .y = 0 };
+    var start = Position{ .x = 0, .y = 0 };
     try procgen.generate_dungeon(rand, map, 10, 6, 30, &start);
 
     var reg = Registry.init(allocator);
@@ -45,7 +45,7 @@ pub fn main() !void {
     var engine = Engine.init(events, map, &reg, term);
 
     const player = reg.create();
-    reg.add(player, Position{ .x = start.x, .y = start.y });
+    reg.add(player, start);
     reg.add(player, Glyph{ .ch = '@', .colour = colours.White });
     engine.setPlayer(player);
 

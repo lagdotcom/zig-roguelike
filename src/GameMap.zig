@@ -10,14 +10,22 @@ pub const GameMap = struct {
     allocator: Allocator,
     width: usize,
     height: usize,
+    tileCount: usize,
     tiles: []t.Tile,
+    visible: []bool,
+    explored: []bool,
 
     pub fn init(allocator: Allocator, width: usize, height: usize) !GameMap {
+        const tileCount = width * height;
+
         const map = GameMap{
             .allocator = allocator,
             .width = width,
             .height = height,
-            .tiles = try allocator.alloc(t.Tile, width * height),
+            .tileCount = tileCount,
+            .tiles = try allocator.alloc(t.Tile, tileCount),
+            .visible = try allocator.alloc(bool, tileCount),
+            .explored = try allocator.alloc(bool, tileCount),
         };
 
         return map;
@@ -45,9 +53,23 @@ pub const GameMap = struct {
     }
 
     pub fn fill(self: GameMap, tile: t.Tile) !void {
-        for (0..self.height) |y| {
-            for (0..self.width) |x| {
-                try self.setTile(@intCast(x), @intCast(y), tile);
+        for (0..self.tileCount) |i| {
+            self.tiles[i] = tile;
+            self.visible[i] = false;
+            self.explored[i] = false;
+        }
+    }
+
+    pub fn isVisible(self: GameMap, x: i16, y: i16) bool {
+        return if (self.contains(x, y)) self.visible[self.getIndex(x, y)] else false;
+    }
+
+    pub fn setVisible(self: GameMap, x: i16, y: i16, visible: bool) void {
+        if (self.contains(x, y)) {
+            const index = self.getIndex(x, y);
+            self.visible[index] = visible;
+            if (visible) {
+                self.explored[index] = true;
             }
         }
     }
@@ -65,14 +87,17 @@ pub const GameMap = struct {
 
         for (0..max_y) |y| {
             for (0..max_x) |x| {
-                const tile = self.getTile(@intCast(x), @intCast(y));
-                try term.setChar(
-                    @intCast(x),
-                    @intCast(y),
-                    tile.dark.fg,
-                    tile.dark.bg,
-                    tile.dark.ch,
-                );
+                const cast_x: i16 = @intCast(x);
+                const cast_y: i16 = @intCast(y);
+                const index = self.getIndex(cast_x, cast_y);
+
+                const tile = self.tiles[index];
+                const visible = self.visible[index];
+                const explored = self.explored[index];
+
+                const glyph = if (visible) tile.light else if (explored) tile.dark else t.shroud;
+
+                try term.setChar(cast_x, cast_y, glyph.fg, glyph.bg, glyph.ch);
             }
         }
     }

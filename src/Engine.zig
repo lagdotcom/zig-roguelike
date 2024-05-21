@@ -17,6 +17,8 @@ const IsPlayer = components.IsPlayer;
 const Position = components.Position;
 
 const GameMap = @import("GameMap.zig").GameMap;
+const fov = @import("algo/fov.zig");
+const t = @import("Tile.zig");
 
 pub const Engine = struct {
     drawables: entt.MultiView(2, 0),
@@ -55,14 +57,13 @@ pub const Engine = struct {
             const pos = self.drawables.getConst(Position, entity);
             const glyph = self.drawables.getConst(Glyph, entity);
 
-            if (self.terminal.contains(pos.x, pos.y)) {
-                try self.terminal.setForegroundColour(glyph.colour);
+            if (self.map.isVisible(pos.x, pos.y) and self.terminal.contains(pos.x, pos.y)) {
                 try self.terminal.printAt(pos.x, pos.y, "{c}", .{glyph.ch});
+                try self.terminal.setChar(pos.x, pos.y, glyph.colour, t.floor.light.bg, glyph.ch);
             }
         }
 
         try self.terminal.present();
-        // try self.terminal.clear();
     }
 
     fn handle_events(self: *Engine) !void {
@@ -98,12 +99,18 @@ pub const Engine = struct {
         }
     }
 
+    fn update_fov(self: *Engine) void {
+        const position = self.registry.getConst(Position, self.player);
+        fov.compute(self.map, position);
+    }
+
     pub fn run(self: *Engine) !void {
         self.running = true;
 
         while (self.running) {
             try self.render();
             try self.handle_events();
+            self.update_fov();
         }
     }
 };
