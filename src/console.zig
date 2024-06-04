@@ -1,6 +1,7 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
-const File = std.fs.File;
+
+const arch = @import("arch.zig");
 
 const windows = @import("arch/windows.zig");
 
@@ -34,35 +35,15 @@ const ReadConsoleExFlags = struct {
     pub const NoWait = 0x2;
 };
 
-pub fn setMode(in: File, mode: u32) u32 {
-    var oldMode: u32 = undefined;
-    _ = windows.GetConsoleMode(in.handle, &oldMode);
-    _ = windows.SetConsoleMode(in.handle, mode);
-
-    return oldMode;
-}
-
-pub const ConsoleSize = struct {
-    width: i16,
-    height: i16,
-};
-
-pub fn getSize(out: File) ConsoleSize {
-    var info: windows.CONSOLE_SCREEN_BUFFER_INFO = undefined;
-    _ = windows.GetConsoleScreenBufferInfo(out.handle, &info);
-
-    return .{ .width = info.dwSize.X, .height = info.dwSize.Y };
-}
-
 pub const EventManager = struct {
     allocator: Allocator,
     raw_events: []windows.INPUT_RECORD_W,
     events: []ConsoleInputEvent,
-    file: File,
+    file: arch.File,
     old_mode: u32,
 
-    pub fn init(allocator: Allocator, size: usize, file: File) !EventManager {
-        const old_mode = setMode(
+    pub fn init(allocator: Allocator, size: usize, file: arch.File) !EventManager {
+        const old_mode = arch.setMode(
             file,
             ConsoleMode.ENABLE_WINDOW_INPUT | ConsoleMode.ENABLE_PROCESSED_INPUT,
         );
@@ -79,18 +60,11 @@ pub const EventManager = struct {
     pub fn deinit(self: EventManager) void {
         self.allocator.free(self.raw_events);
         self.allocator.free(self.events);
-        _ = setMode(self.file, self.old_mode);
+        _ = arch.setMode(self.file, self.old_mode);
     }
 
     pub fn wait(self: EventManager) []ConsoleInputEvent {
-        var read: u32 = undefined;
-        _ = windows.ReadConsoleInputExW(
-            self.file.handle,
-            self.raw_events.ptr,
-            @intCast(self.raw_events.len),
-            &read,
-            0,
-        );
+        const read = arch.getConsoleInput(self.file, self.raw_events);
 
         for (self.raw_events[0..read], 0..) |raw, i| {
             self.events[i] = switch (raw.EventType) {

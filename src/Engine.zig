@@ -20,6 +20,8 @@ const GameMap = @import("GameMap.zig").GameMap;
 const fov = @import("algo/fov.zig");
 const t = @import("Tile.zig");
 
+const arch = @import("arch.zig");
+
 pub const Engine = struct {
     drawables: entt.MultiView(2, 0),
     event_manager: EventManager,
@@ -41,16 +43,26 @@ pub const Engine = struct {
         };
     }
 
+    pub fn deinit(self: *Engine) void {
+        self.registry.deinit();
+        self.map.deinit();
+        self.event_manager.deinit();
+        self.terminal.deinit() catch {};
+    }
+
     pub fn setPlayer(self: *Engine, e: Entity) void {
         self.registry.add(e, IsPlayer{});
         self.player = e;
     }
 
-    fn render(self: *Engine) !void {
+    pub fn render(self: *Engine) !void {
         try self.map.draw(&self.terminal);
 
         try self.terminal.setForegroundColour(colours.White);
-        try self.terminal.printAt(self.terminal.width - 20, self.terminal.height - 1, "Press ESCAPE to quit", .{});
+
+        if (arch.runForever) {
+            try self.terminal.printAt(self.terminal.width - 20, self.terminal.height - 1, "Press ESCAPE to quit", .{});
+        }
 
         var iter = self.drawables.entityIterator();
         while (iter.next()) |entity| {
@@ -108,9 +120,13 @@ pub const Engine = struct {
         self.running = true;
 
         while (self.running) {
-            try self.render();
-            try self.handle_events();
-            self.update_fov();
+            try self.tick();
         }
+    }
+
+    pub fn tick(self: *Engine) !void {
+        try self.handle_events();
+        self.update_fov();
+        try self.render();
     }
 };

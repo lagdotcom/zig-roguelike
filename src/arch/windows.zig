@@ -219,6 +219,18 @@ pub const VIRTUAL_KEY = enum(WORD) {
     OEMClear,
 };
 
+pub const CONTROL_KEY_STATE = struct {
+    pub const RIGHT_ALT_PRESSED = 0x1;
+    pub const LEFT_ALT_PRESSED = 0x2;
+    pub const RIGHT_CTRL_PRESSED = 0x4;
+    pub const LEFT_CTRL_PRESSED = 0x8;
+    pub const SHIFT_PRESSED = 0x10;
+    pub const NUMLOCK_ON = 0x20;
+    pub const SCROLLLOCK_ON = 0x40;
+    pub const CAPSLOCK_ON = 0x80;
+    pub const ENHANCED_KEY = 0x100;
+};
+
 pub const KEY_EVENT_RECORD_W = extern struct {
     bKeyDown: BOOL,
     wRepeatCount: WORD,
@@ -255,3 +267,44 @@ pub const INPUT_RECORD_W = extern struct {
 };
 
 pub extern "kernel32" fn ReadConsoleInputExW(hConsoleInput: HANDLE, lpBuffer: [*]INPUT_RECORD_W, nLength: DWORD, lpNumberOfEventsRead: *DWORD, wFlags: USHORT) callconv(WINAPI) BOOL;
+
+pub const ConsoleSize = struct {
+    width: i16,
+    height: i16,
+};
+
+pub fn getSize(out: std.fs.File) ConsoleSize {
+    var info: windows.CONSOLE_SCREEN_BUFFER_INFO = undefined;
+    _ = GetConsoleScreenBufferInfo(out.handle, &info);
+
+    return .{ .width = info.dwSize.X, .height = info.dwSize.Y };
+}
+
+pub fn setMode(in: std.fs.File, mode: u32) u32 {
+    var oldMode: u32 = undefined;
+    _ = GetConsoleMode(in.handle, &oldMode);
+    _ = SetConsoleMode(in.handle, mode);
+
+    return oldMode;
+}
+
+pub const File = std.fs.File;
+pub const getStdErr = std.io.getStdErr;
+pub const getStdIn = std.io.getStdIn;
+pub const getStdOut = std.io.getStdOut;
+pub const getrandom = std.posix.getrandom;
+
+pub fn getConsoleInputRecords(f: File, buffer: []INPUT_RECORD_W) u32 {
+    var read: u32 = undefined;
+    _ = ReadConsoleInputExW(
+        f.handle,
+        buffer.ptr,
+        @intCast(buffer.len),
+        &read,
+        0,
+    );
+
+    return read;
+}
+
+pub const runForever = true;

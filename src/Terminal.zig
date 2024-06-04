@@ -1,27 +1,24 @@
 const std = @import("std");
-const File = std.fs.File;
+const arch = @import("arch.zig");
 
 const colours = @import("colours.zig");
 const RGB8 = colours.RGB8;
 
 const ansi = @import("ansi.zig");
-const console = @import("console.zig");
 
 pub const Terminal = struct {
-    buffer: std.io.BufferedWriter(4096, File.Writer),
-    file: File,
+    buffer: std.io.BufferedWriter(4096, arch.File.Writer),
     width: i16,
     height: i16,
 
     const Self = @This();
 
-    pub fn init(file: File, title: []const u8) !Terminal {
+    pub fn init(file: arch.File, title: []const u8) !Terminal {
         if (!file.supportsAnsiEscapeCodes()) return error.ConsoleDoesNotSupportAnsi;
 
-        const size = console.getSize(file);
+        const size = arch.getSize(file);
 
         var term = Terminal{
-            .file = file,
             .buffer = std.io.bufferedWriter(file.writer()),
             .width = size.width,
             .height = size.height,

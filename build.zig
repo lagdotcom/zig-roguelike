@@ -24,6 +24,12 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
+    if (target.result.cpu.arch == .wasm32) {
+        exe.entry = .disabled;
+        exe.rdynamic = true;
+        exe.stack_size = std.wasm.page_size;
+    }
+
     const entt = b.dependency("entt", .{
         .target = target,
         .optimize = optimize,
