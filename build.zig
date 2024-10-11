@@ -15,7 +15,7 @@ pub fn build(b: *std.Build) void {
     // set a preferred release mode, allowing the user to decide how to optimize.
     const optimize = b.standardOptimizeOption(.{});
 
-    const mainZig: std.Build.LazyPath = .{ .path = "src/main.zig" };
+    const mainZig = b.path("src/main.zig");
 
     const exe = b.addExecutable(.{
         .name = "zig-roguelike",

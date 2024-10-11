@@ -16,8 +16,8 @@
     // internet connectivity.
     .dependencies = .{
         .entt = .{
-            .url = "https://github.com/prime31/zig-ecs/archive/refs/heads/master.tar.gz",
-            .hash = "12200f77411ec939c18d42050c349b9e826932a7c45449975f54ab508fb5cbe6ecbd",
+            .url = "https://github.com/prime31/zig-ecs/archive/refs/heads/master.zip",
+            .hash = "1220949709178b133c4d7f6ddf87fa575a9f2e9afe545a39aafdc8c89e6abbe83412",
         },
 
         // See `zig fetch --save <url>` for a command-line interface for adding dependencies.
