@@ -159,11 +159,23 @@ fn place_entities(reg: *Registry, rand: Random, room: RectangularRoom, map: *Gam
             reg.add(monster, c.IsEnemy{});
 
             if (rand.float(f32) < 0.8) {
-                reg.add(monster, c.Glyph{ .ch = 'o', .colour = .{ .r = 63, .g = 127, .b = 63 } });
+                reg.add(monster, c.Glyph{
+                    .ch = 'o',
+                    .colour = .{ .r = 63, .g = 127, .b = 63 },
+                    .order = c.RenderOrder.Actor,
+                });
                 reg.add(monster, c.Named{ .name = "Orc" });
+                reg.add(monster, c.Fighter{ .hp = 10, .max_hp = 10, .defense = 0, .power = 3 });
+                reg.add(monster, c.BaseAI{});
             } else {
-                reg.add(monster, c.Glyph{ .ch = 'T', .colour = .{ .r = 0, .g = 127, .b = 0 } });
+                reg.add(monster, c.Glyph{
+                    .ch = 'T',
+                    .colour = .{ .r = 0, .g = 127, .b = 0 },
+                    .order = c.RenderOrder.Actor,
+                });
                 reg.add(monster, c.Named{ .name = "Troll" });
+                reg.add(monster, c.Fighter{ .hp = 16, .max_hp = 16, .defense = 1, .power = 4 });
+                reg.add(monster, c.BaseAI{});
             }
         }
     }

@@ -28,9 +28,7 @@ const Terminal = @import("Terminal.zig").Terminal;
 
 const colours = @import("colours.zig");
 
-const components = @import("components.zig");
-const Glyph = components.Glyph;
-const Position = components.Position;
+const c = @import("components.zig");
 
 const Engine = @import("Engine.zig").Engine;
 
@@ -65,14 +63,19 @@ fn setup() !Engine {
 
     var reg = Registry.init(allocator);
     var map = try GameMap.init(allocator, 80, 45);
-    var start = Position{ .x = 0, .y = 0 };
+    var start = c.Position{ .x = 0, .y = 0 };
     try procgen.generate_dungeon(&reg, rand, &map, 10, 6, 30, 2, &start);
 
-    var engine = Engine.init(events, map, &reg, term);
+    var engine = Engine.init(allocator, events, map, &reg, term);
 
     const player = reg.create();
     reg.add(player, start);
-    reg.add(player, Glyph{ .ch = '@', .colour = colours.White });
+    reg.add(player, c.Glyph{
+        .ch = '@',
+        .colour = colours.White,
+        .order = c.RenderOrder.Actor,
+    });
+    reg.add(player, c.Fighter{ .hp = 30, .max_hp = 30, .defense = 2, .power = 5 });
     engine.setPlayer(player);
 
     try engine.render();

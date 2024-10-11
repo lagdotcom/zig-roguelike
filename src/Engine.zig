@@ -21,7 +21,12 @@ const arch = @import("arch.zig");
 
 const Action = @import("actions.zig").Action;
 
+const ai = @import("ai.zig");
+
+const combat = @import("combat.zig");
+
 pub const Engine = struct {
+    allocator: Allocator,
     blockers: entt.MultiView(2, 0),
     drawables: entt.MultiView(2, 0),
     enemies: entt.MultiView(2, 0),
@@ -32,8 +37,9 @@ pub const Engine = struct {
     running: bool,
     terminal: Terminal,
 
-    pub fn init(event_manager: EventManager, map: GameMap, registry: *Registry, terminal: Terminal) Engine {
+    pub fn init(allocator: Allocator, event_manager: EventManager, map: GameMap, registry: *Registry, terminal: Terminal) Engine {
         return Engine{
+            .allocator = allocator,
             .blockers = registry.view(.{
                 c.BlocksMovement,
                 c.Position,
@@ -70,16 +76,25 @@ pub const Engine = struct {
             try self.terminal.printAt(self.terminal.width - 20, self.terminal.height - 1, "Press ESCAPE to quit", .{});
         }
 
-        var iter = self.drawables.entityIterator();
-        while (iter.next()) |entity| {
-            const pos = self.drawables.getConst(c.Position, entity);
-            const glyph = self.drawables.getConst(c.Glyph, entity);
+        inline for (@typeInfo(c.RenderOrder).Enum.fields) |ro| {
+            var iter = self.drawables.entityIterator();
+            while (iter.next()) |entity| {
+                const glyph = self.drawables.getConst(c.Glyph, entity);
+                if (glyph.order != @as(c.RenderOrder, @enumFromInt(ro.value))) continue;
 
-            if (self.map.isVisible(pos.x, pos.y) and self.terminal.contains(pos.x, pos.y)) {
-                try self.terminal.printAt(pos.x, pos.y, "{c}", .{glyph.ch});
-                try self.terminal.setChar(pos.x, pos.y, glyph.colour, t.floor.light.bg, glyph.ch);
+                const pos = self.drawables.getConst(c.Position, entity);
+
+                if (self.map.isVisible(pos.x, pos.y) and self.terminal.contains(pos.x, pos.y)) {
+                    try self.terminal.printAt(pos.x, pos.y, "{c}", .{glyph.ch});
+                    try self.terminal.setChar(pos.x, pos.y, glyph.colour, t.floor.light.bg, glyph.ch);
+                }
             }
         }
+
+        const fighter = self.registry.getConst(c.Fighter, self.player);
+        try self.terminal.setForegroundColour(colours.White);
+        try self.terminal.setBackgroundColour(colours.Black);
+        try self.terminal.printAt(1, self.terminal.height - 1, "HP: {}/{}    ", .{ fighter.hp, fighter.max_hp });
 
         try self.terminal.present();
     }
@@ -90,7 +105,7 @@ pub const Engine = struct {
                 .key => |key| {
                     const maybe_cmd = input_handlers.process(key);
                     if (maybe_cmd) |cmd|
-                        self.perform_action(cmd);
+                        try self.perform_action(cmd);
                 },
 
                 .size => |size| {
@@ -102,15 +117,16 @@ pub const Engine = struct {
         }
     }
 
-    fn handle_enemy_turns(self: *Engine) void {
+    fn handle_enemy_turns(self: *Engine) !void {
         var iter = self.enemies.entityIterator();
         while (iter.next()) |entity| {
-            const name = self.registry.getConst(c.Named, entity);
-            std.log.debug("{} wonders when they will get their turn.", .{name.name});
+            if (self.registry.has(c.BaseAI, entity)) try ai.base_ai(self, entity);
         }
     }
 
-    fn perform_action(self: *Engine, cmd: Action) void {
+    fn perform_action(self: *Engine, cmd: Action) !void {
+        var spend_turn = false;
+
         switch (cmd) {
             .escape => {
                 self.running = false;
@@ -123,20 +139,23 @@ pub const Engine = struct {
                 const dest_y = position.y + move.dy;
 
                 if (self.map.contains(dest_x, dest_y) and self.map.getTile(dest_x, dest_y).walkable) {
-                    const maybe_blocker = self.getBlockingEntityAtLocation(dest_x, dest_y);
-                    if (maybe_blocker) |blocker| {
-                        const named = self.registry.getConst(c.Named, blocker);
-                        std.log.debug("You kick the {}!", .{named.name});
-                        return;
-                    }
+                    spend_turn = true;
 
-                    position.x = dest_x;
-                    position.y = dest_y;
+                    const maybe_blocker = self.get_blocker_at_location(dest_x, dest_y);
+                    if (maybe_blocker) |blocker| {
+                        try combat.attack(self, self.player, blocker);
+                    } else {
+                        position.x = dest_x;
+                        position.y = dest_y;
+                    }
                 }
+            },
+            .wait => {
+                spend_turn = true;
             },
         }
 
-        self.handle_enemy_turns();
+        if (spend_turn) try self.handle_enemy_turns();
     }
 
     fn update_fov(self: *Engine) void {
@@ -158,7 +177,7 @@ pub const Engine = struct {
         try self.render();
     }
 
-    pub fn getBlockingEntityAtLocation(self: *Engine, x: i16, y: i16) ?Entity {
+    pub fn get_blocker_at_location(self: *Engine, x: i16, y: i16) ?Entity {
         var iter = self.blockers.entityIterator();
         while (iter.next()) |entity| {
             const pos = self.drawables.getConst(c.Position, entity);

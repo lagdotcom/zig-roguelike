@@ -14,7 +14,10 @@ pub fn process(event: windows.KEY_EVENT_RECORD_W) ?Action {
         VK.Right => Action{ .movement = .{ .dx = 1, .dy = 0 } },
         VK.Down => Action{ .movement = .{ .dx = 0, .dy = 1 } },
 
-        VK.Escape => Action{ .escape = true },
+        VK.Escape => Action.escape,
+
+        VK.Numpad5 => Action.wait,
+        VK.Clear => Action.wait,
 
         else => null,
     };
