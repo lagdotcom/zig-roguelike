@@ -1,6 +1,8 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 
+const Set = @import("ziglangSet").Set;
+
 const t = @import("Tile.zig");
 const Terminal = @import("Terminal.zig").Terminal;
 
@@ -14,6 +16,7 @@ pub const GameMap = struct {
     tiles: []t.Tile,
     visible: []bool,
     explored: []bool,
+    blocked: Set(usize),
 
     pub fn init(allocator: Allocator, width: usize, height: usize) !GameMap {
         const tileCount = width * height;
@@ -26,6 +29,7 @@ pub const GameMap = struct {
             .tiles = try allocator.alloc(t.Tile, tileCount),
             .visible = try allocator.alloc(bool, tileCount),
             .explored = try allocator.alloc(bool, tileCount),
+            .blocked = Set(usize).init(allocator),
         };
 
         return map;
@@ -50,6 +54,14 @@ pub const GameMap = struct {
 
     pub fn getTile(self: GameMap, x: i16, y: i16) t.Tile {
         return if (self.contains(x, y)) self.tiles[self.getIndex(x, y)] else t.wall;
+    }
+
+    pub fn setBlocked(self: *GameMap, x: i16, y: i16) !void {
+        _ = try self.blocked.add(self.getIndex(x, y));
+    }
+
+    pub fn isBlocked(self: GameMap, x: i16, y: i16) bool {
+        return self.blocked.contains(self.getIndex(x, y));
     }
 
     pub fn fill(self: GameMap, tile: t.Tile) !void {

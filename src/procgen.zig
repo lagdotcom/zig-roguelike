@@ -5,6 +5,11 @@ const Point = @import("common.zig").Point;
 const GameMap = @import("GameMap.zig").GameMap;
 const t = @import("Tile.zig");
 
+const entt = @import("entt");
+const Registry = entt.Registry;
+
+const c = @import("components.zig");
+
 pub const RectangularRoom = struct {
     x1: i16,
     y1: i16,
@@ -72,11 +77,13 @@ pub const RectangularRoomIterator = struct {
 };
 
 pub fn generate_dungeon(
+    reg: *Registry,
     rand: Random,
-    map: GameMap,
+    map: *GameMap,
     room_max_size: usize,
     room_min_size: usize,
     max_rooms: usize,
+    max_monsters_per_room: usize,
     player_pos: *Point,
 ) !void {
     var rooms = try std.ArrayList(RectangularRoom).initCapacity(map.allocator, max_rooms);
@@ -111,18 +118,19 @@ pub fn generate_dungeon(
             try tunnel_between(rand, map, rooms.getLast().centre(), new_room.centre());
         }
 
+        try place_entities(reg, rand, new_room, map, max_monsters_per_room);
         try rooms.append(new_room);
     }
 }
 
-fn tunnel_between(rand: Random, map: GameMap, start: Point, end: Point) !void {
+fn tunnel_between(rand: Random, map: *GameMap, start: Point, end: Point) !void {
     const corner = if (rand.boolean()) Point{ .x = end.x, .y = start.y } else Point{ .x = start.x, .y = end.y };
 
     try carve_straight_line(map, start, corner);
     try carve_straight_line(map, corner, end);
 }
 
-fn carve_straight_line(map: GameMap, start: Point, end: Point) !void {
+fn carve_straight_line(map: *GameMap, start: Point, end: Point) !void {
     var x = start.x;
     var y = start.y;
     const dx = std.math.sign(end.x - start.x);
@@ -133,5 +141,30 @@ fn carve_straight_line(map: GameMap, start: Point, end: Point) !void {
 
         x += dx;
         y += dy;
+    }
+}
+
+fn place_entities(reg: *Registry, rand: Random, room: RectangularRoom, map: *GameMap, maximum_monsters: usize) !void {
+    const number_of_monsters = rand.intRangeAtMost(usize, 0, maximum_monsters);
+
+    for (0..number_of_monsters) |_| {
+        const x = rand.intRangeAtMost(i16, room.x1 + 1, room.x2 - 1);
+        const y = rand.intRangeAtMost(i16, room.y1 + 1, room.y2 - 1);
+
+        if (!map.isBlocked(x, y)) {
+            try map.setBlocked(x, y);
+            const monster = reg.create();
+            reg.add(monster, c.Position{ .x = x, .y = y });
+            reg.add(monster, c.BlocksMovement{});
+            reg.add(monster, c.IsEnemy{});
+
+            if (rand.float(f32) < 0.8) {
+                reg.add(monster, c.Glyph{ .ch = 'o', .colour = .{ .r = 63, .g = 127, .b = 63 } });
+                reg.add(monster, c.Named{ .name = "Orc" });
+            } else {
+                reg.add(monster, c.Glyph{ .ch = 'T', .colour = .{ .r = 0, .g = 127, .b = 0 } });
+                reg.add(monster, c.Named{ .name = "Troll" });
+            }
+        }
     }
 }

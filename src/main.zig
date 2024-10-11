@@ -63,11 +63,10 @@ fn setup() !Engine {
     });
     const rand = prng.random();
 
-    const map = try GameMap.init(allocator, 80, 45);
-    var start = Position{ .x = 0, .y = 0 };
-    try procgen.generate_dungeon(rand, map, 10, 6, 30, &start);
-
     var reg = Registry.init(allocator);
+    var map = try GameMap.init(allocator, 80, 45);
+    var start = Position{ .x = 0, .y = 0 };
+    try procgen.generate_dungeon(&reg, rand, &map, 10, 6, 30, 2, &start);
 
     var engine = Engine.init(events, map, &reg, term);
 
