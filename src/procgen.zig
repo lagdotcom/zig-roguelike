@@ -11,12 +11,12 @@ const Registry = entt.Registry;
 const c = @import("components.zig");
 
 pub const RectangularRoom = struct {
-    x1: i16,
-    y1: i16,
-    x2: i16,
-    y2: i16,
+    x1: GameMap.Coord,
+    y1: GameMap.Coord,
+    x2: GameMap.Coord,
+    y2: GameMap.Coord,
 
-    pub fn init(x: i16, y: i16, width: i16, height: i16) RectangularRoom {
+    pub fn init(x: GameMap.Coord, y: GameMap.Coord, width: GameMap.Coord, height: GameMap.Coord) RectangularRoom {
         return RectangularRoom{
             .x1 = x,
             .y1 = y,
@@ -52,8 +52,8 @@ pub const RectangularRoom = struct {
 
 pub const RectangularRoomIterator = struct {
     room: RectangularRoom,
-    x: i16,
-    y: i16,
+    x: GameMap.Coord,
+    y: GameMap.Coord,
 
     pub fn init(room: RectangularRoom) RectangularRoomIterator {
         return RectangularRoomIterator{ .room = room, .x = room.x1, .y = room.y1 };
@@ -148,8 +148,8 @@ fn place_entities(reg: *Registry, rand: Random, room: RectangularRoom, map: *Gam
     const number_of_monsters = rand.intRangeAtMost(usize, 0, maximum_monsters);
 
     for (0..number_of_monsters) |_| {
-        const x = rand.intRangeAtMost(i16, room.x1 + 1, room.x2 - 1);
-        const y = rand.intRangeAtMost(i16, room.y1 + 1, room.y2 - 1);
+        const x = rand.intRangeAtMost(GameMap.Coord, room.x1 + 1, room.x2 - 1);
+        const y = rand.intRangeAtMost(GameMap.Coord, room.y1 + 1, room.y2 - 1);
 
         if (!map.isBlocked(x, y)) {
             try map.setBlocked(x, y);

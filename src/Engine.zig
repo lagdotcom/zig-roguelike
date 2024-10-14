@@ -177,7 +177,7 @@ pub const Engine = struct {
         try self.render();
     }
 
-    pub fn get_blocker_at_location(self: *Engine, x: i16, y: i16) ?Entity {
+    pub fn get_blocker_at_location(self: *Engine, x: GameMap.Coord, y: GameMap.Coord) ?Entity {
         var iter = self.blockers.entityIterator();
         while (iter.next()) |entity| {
             const pos = self.drawables.getConst(c.Position, entity);

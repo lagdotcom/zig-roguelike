@@ -13,7 +13,7 @@ const combat = @import("combat.zig");
 
 const Graph = struct {
     const Iterator = struct {
-        ps: [8]usize,
+        ps: [8]GameMap.Index,
         cur: usize,
         size: usize,
 
@@ -32,9 +32,10 @@ const Graph = struct {
         return Graph{ .e = e, .ignore = ignore };
     }
 
-    pub fn iterate_neighbours(self: Graph, id: usize) Iterator {
-        const x: usize = @intCast(id % self.e.map.width);
-        const y: usize = @intCast(id / self.e.map.width);
+    pub fn iterate_neighbours(self: Graph, id: GameMap.Index) Iterator {
+        const pos = self.e.map.getPoint(id);
+        const x: usize = @intCast(pos.x);
+        const y: usize = @intCast(pos.y);
         var it = Iterator{
             .ps = undefined,
             .cur = 0,
@@ -52,21 +53,19 @@ const Graph = struct {
         return it;
     }
 
-    pub fn gcost(self: Graph, from: usize, to: usize) usize {
-        const from_x = from % self.e.map.width;
-        const from_y = from / self.e.map.width;
-        const to_x = to % self.e.map.width;
-        const to_y = to / self.e.map.width;
-        const dx = if (from_x > to_x) from_x - to_x else to_x - from_x;
-        const dy = if (from_y > to_y) from_y - to_y else to_y - from_y;
-        return dx + dy;
+    pub fn gcost(self: Graph, from_i: GameMap.Index, to_i: GameMap.Index) usize {
+        const from = self.e.map.getPoint(from_i);
+        const to = self.e.map.getPoint(to_i);
+        const dx = if (from.x > to.x) from.x - to.x else to.x - from.x;
+        const dy = if (from.y > to.y) from.y - to.y else to.y - from.y;
+        return @intCast(dx + dy);
     }
 
-    pub fn hcost(self: Graph, from: usize, to: usize) usize {
+    pub fn hcost(self: Graph, from: GameMap.Index, to: GameMap.Index) usize {
         return self.gcost(from, to);
     }
 
-    inline fn isReachable(self: Graph, x: i16, y: i16) bool {
+    inline fn isReachable(self: Graph, x: GameMap.Coord, y: GameMap.Coord) bool {
         const blocker = self.e.get_blocker_at_location(x, y);
         return self.e.map.contains(x, y) and self.e.map.getTile(x, y).walkable and (blocker == null or blocker == self.ignore);
     }
@@ -91,10 +90,8 @@ pub fn base_ai(e: *Engine, entity: Entity) !void {
     if (try astar.calculate_path(e.allocator, graph, from, to)) |path| {
         defer path.deinit();
 
-        const next = path.items[1];
-        const next_x = next % e.map.width;
-        const next_y = next / e.map.width;
-        pos.x = @intCast(next_x);
-        pos.y = @intCast(next_y);
+        const next = e.map.getPoint(path.items[1]);
+        pos.x = @intCast(next.x);
+        pos.y = @intCast(next.y);
     }
 }
