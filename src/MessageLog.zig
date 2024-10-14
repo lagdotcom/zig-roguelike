@@ -18,6 +18,10 @@ pub const MessageLog = struct {
         return MessageLog{ .messages = std.ArrayList(Message).init(allocator) };
     }
 
+    pub fn deinit(self: *MessageLog) void {
+        self.messages.deinit();
+    }
+
     pub fn add(self: *MessageLog, text: []const u8, fg: RGB8, stack: bool) !void {
         if (stack) {
             if (self.messages.getLastOrNull()) |top| {

@@ -15,6 +15,7 @@ const fov = @import("algo/fov.zig");
 const GameMap = @import("GameMap.zig").GameMap;
 const input_handlers = @import("input_handlers.zig");
 const MessageLog = @import("MessageLog.zig").MessageLog;
+const Point = @import("common.zig").Point;
 const rf = @import("render_functions.zig");
 const RGB8 = @import("colours.zig").RGB8;
 const t = @import("Tile.zig");
@@ -28,6 +29,8 @@ pub const Engine = struct {
     event_manager: EventManager,
     map: GameMap,
     message_log: MessageLog,
+    mouse_location: Point,
+    named: entt.MultiView(2, 0),
     player: Entity,
     registry: *Registry,
     running: bool,
@@ -45,6 +48,8 @@ pub const Engine = struct {
             .event_manager = event_manager,
             .map = map,
             .message_log = try MessageLog.init(allocator),
+            .mouse_location = .{ .x = 0, .y = 0 },
+            .named = registry.view(.{ c.Named, c.Position }, .{}),
             .player = 0,
             .registry = registry,
             .running = false,
@@ -56,6 +61,7 @@ pub const Engine = struct {
         self.registry.deinit();
         self.map.deinit();
         self.event_manager.deinit();
+        self.message_log.deinit();
         self.terminal.deinit() catch {};
     }
 
@@ -93,20 +99,34 @@ pub const Engine = struct {
         const fighter = self.registry.getConst(c.Fighter, self.player);
         try rf.render_bar(&self.terminal, fighter.hp, fighter.max_hp, 20);
 
+        try self.terminal.drawRect(21, 44, @intCast(self.terminal.width - 21), 1, ' ');
+        const maybe_names = try self.get_names_at_location(self.mouse_location.x, self.mouse_location.y);
+        if (maybe_names) |names| {
+            try self.terminal.printAt(21, 44, "{s}", .{names});
+            self.allocator.free(names);
+        }
+
         try self.terminal.present();
     }
 
     fn handle_events(self: *Engine) !void {
         for (self.event_manager.wait()) |event| {
             switch (event) {
-                .key => |key| {
-                    const maybe_cmd = input_handlers.process(key);
+                .key => |e| {
+                    const maybe_cmd = input_handlers.process(e);
                     if (maybe_cmd) |cmd|
                         try self.perform_action(cmd);
                 },
 
-                .size => |size| {
-                    try self.terminal.resize(size.dwSize.X, size.dwSize.Y);
+                .size => |e| {
+                    try self.terminal.resize(e.dwSize.X, e.dwSize.Y);
+                },
+
+                .mouse => |e| {
+                    const pos = e.dwMousePosition;
+                    if (self.map.contains(pos.X, pos.Y)) self.mouse_location = .{ .x = pos.X, .y = pos.Y };
+
+                    try self.terminal.printAt(21, 43, "e{d} b{d}: {d},{d}", .{ e.dwEventFlags, e.dwButtonState, e.dwMousePosition.X, e.dwMousePosition.Y });
                 },
 
                 else => {},
@@ -187,5 +207,20 @@ pub const Engine = struct {
     pub fn add_to_log(self: *Engine, comptime fmt: []const u8, args: anytype, fg: RGB8, stack: bool) !void {
         const text = try std.fmt.allocPrint(self.allocator, fmt, args);
         try self.message_log.add(text, fg, stack);
+    }
+
+    pub fn get_names_at_location(self: *Engine, x: GameMap.Coord, y: GameMap.Coord) !?[]const u8 {
+        if (!self.map.contains(x, y) or !self.map.isVisible(x, y)) return null;
+
+        var names = std.ArrayList([]const u8).init(self.allocator);
+        defer names.deinit();
+
+        var iter = self.named.entityIterator();
+        while (iter.next()) |entity| {
+            const pos = self.registry.getConst(c.Position, entity);
+            if (pos.x == x and pos.y == y) try names.append(self.registry.getConst(c.Named, entity).name);
+        }
+
+        return if (names.items.len > 0) try std.mem.join(self.allocator, ", ", names.items) else null;
     }
 };

@@ -1,7 +1,7 @@
 const std = @import("std");
-const windows = @import("windows.zig");
 
 const Engine = @import("../Engine.zig").Engine;
+const windows = @import("windows.zig");
 
 // WASM Interface
 pub const ConsoleSize = struct { width: i16, height: i16 };
@@ -57,7 +57,7 @@ pub fn getrandom(buffer: []u8) !void {
 
 pub fn setMode(f: File, mode: u32) u32 {
     const oldMode = getConsoleMode(f.handle);
-    _ = setConsoleMode(f.handle, mode);
+    setConsoleMode(f.handle, mode);
 
     return oldMode;
 }

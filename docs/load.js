@@ -3,9 +3,11 @@ class Display {
    * @param {number} width
    * @param {number} height
    */
-  constructor(width, height) {
+  constructor(width, height, charWidth = 12, charHeight = 18) {
     this.width = width;
     this.height = height;
+    this.charWidth = charWidth;
+    this.charHeight = charHeight;
     this.x = 0;
     this.y = 0;
     this.fg = "grey";
@@ -30,8 +32,10 @@ class Display {
 
       for (let x = 0; x < width; x++) {
         const td = document.createElement("td");
-        td.style.width = "12px";
-        td.style.height = "18px";
+        td.style.width = `${charWidth}px`;
+        td.style.height = `${charHeight}px`;
+        td.dataset.x = x;
+        td.dataset.y = y;
         td.innerText = "";
         tr.append(td);
         row.push(td);
@@ -250,6 +254,11 @@ class ANSIParser {
         const b = numbers[i++];
         this.display.fg = `rgb(${r},${g},${b})`;
       }
+      // Reset
+      else if (n === 0) {
+        this.display.fg = "grey";
+        this.display.bg = "black";
+      }
       // huh
       else console.warn("SGR", numbers);
     }
@@ -309,6 +318,7 @@ class Env {
 
     document.addEventListener("keydown", this.onKey);
     document.addEventListener("keyup", this.onKey);
+    document.addEventListener("mousemove", this.onMouseMove);
   }
 
   get processedInput() {
@@ -323,6 +333,9 @@ class Env {
   get windowInput() {
     return (this.mode & 0x8) > 0;
   }
+  get mouseInput() {
+    return (this.mode & 0x10) > 0;
+  }
 
   /**
    * @param {number} h
@@ -334,13 +347,14 @@ class Env {
     let count = 0;
     const w = new Writer(new DataView(this.memory.buffer, addr));
 
+    let flags = 0;
     for (const e of this.keyEvents) {
-      let flags = 0;
+      flags = 0;
       if (e.altKey) flags |= 0x1;
       if (e.ctrlKey) flags |= 0x4;
       if (e.shiftKey) flags |= 0x10;
 
-      w.WORD(1);
+      w.WORD(1); // INPUT_RECORD_TYPE.Key
       w.align(4);
       w.BOOL(e.type === "keydown");
       w.WORD(1);
@@ -348,9 +362,25 @@ class Env {
       w.WORD(0);
       w.WORD(e.charCode);
       w.DWORD(flags);
+
       count++;
+      if (count == len) return count;
     }
     this.keyEvents = [];
+
+    if (this.mouseMove && this.mouseInput) {
+      const { x, y } = this.mouseMove;
+
+      w.WORD(2); // INPUT_RECORD_TYPE.Mouse
+      w.align(4);
+      w.WORD(x);
+      w.WORD(y);
+      w.DWORD(0); // MOUSE_EVENT_RECORD.dwButtonState
+      w.DWORD(flags);
+      w.DWORD(1); // MOUSE_EVENT_FLAGS.MOUSE_MOVED
+      count++;
+    }
+    this.mouseMove = undefined;
 
     return count;
   };
@@ -433,6 +463,15 @@ class Env {
    */
   onKey = (e) => {
     this.keyEvents.push(e);
+  };
+
+  /**
+   *
+   * @param {MouseEvent} e
+   */
+  onMouseMove = (e) => {
+    const { x, y } = e.target.dataset;
+    this.mouseMove = { x: parseInt(x), y: parseInt(y) };
   };
 }
 

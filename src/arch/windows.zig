@@ -244,6 +244,21 @@ pub const MENU_EVENT_RECORD = extern struct {
     dwCommandId: UINT,
 };
 
+pub const MOUSE_EVENT_BUTTON_STATE = struct {
+    pub const FROM_LEFT_1ST_BUTTON_PRESSED = 0x0001;
+    pub const FROM_LEFT_2ND_BUTTON_PRESSED = 0x0004;
+    pub const FROM_LEFT_3RD_BUTTON_PRESSED = 0x0008;
+    pub const FROM_LEFT_4TH_BUTTON_PRESSED = 0x0010;
+    pub const RIGHTMOST_BUTTON_PRESSED = 0x0002;
+};
+
+pub const MOUSE_EVENT_FLAGS = struct {
+    pub const DOUBLE_CLICK = 0x0002;
+    pub const MOUSE_HWHEELED = 0x0008;
+    pub const MOUSE_MOVED = 0x0001;
+    pub const MOUSE_WHEELED = 0x0004;
+};
+
 pub const MOUSE_EVENT_RECORD = extern struct {
     dwMousePosition: COORD,
     dwButtonState: DWORD,
@@ -266,7 +281,7 @@ pub const INPUT_RECORD_W = extern struct {
     },
 };
 
-pub extern "kernel32" fn ReadConsoleInputExW(hConsoleInput: HANDLE, lpBuffer: [*]INPUT_RECORD_W, nLength: DWORD, lpNumberOfEventsRead: *DWORD, wFlags: USHORT) callconv(WINAPI) BOOL;
+pub extern "kernel32" fn ReadConsoleInputW(hConsoleInput: HANDLE, lpBuffer: [*]INPUT_RECORD_W, nLength: DWORD, lpNumberOfEventsRead: *DWORD) callconv(WINAPI) BOOL;
 
 pub const ConsoleSize = struct {
     width: i16,
@@ -296,12 +311,11 @@ pub const getrandom = std.posix.getrandom;
 
 pub fn getConsoleInputRecords(f: File, buffer: []INPUT_RECORD_W) u32 {
     var read: u32 = undefined;
-    _ = ReadConsoleInputExW(
+    _ = ReadConsoleInputW(
         f.handle,
         buffer.ptr,
         @intCast(buffer.len),
         &read,
-        0,
     );
 
     return read;

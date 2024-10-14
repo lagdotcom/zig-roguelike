@@ -30,11 +30,6 @@ pub const ConsoleInputEvent = union(enum) {
     focus: windows.FOCUS_EVENT_RECORD,
 };
 
-const ReadConsoleExFlags = struct {
-    pub const NoRemove = 0x1;
-    pub const NoWait = 0x2;
-};
-
 pub const EventManager = struct {
     allocator: Allocator,
     raw_events: []windows.INPUT_RECORD_W,
@@ -45,7 +40,7 @@ pub const EventManager = struct {
     pub fn init(allocator: Allocator, size: usize, file: arch.File) !EventManager {
         const old_mode = arch.setMode(
             file,
-            ConsoleMode.ENABLE_WINDOW_INPUT | ConsoleMode.ENABLE_PROCESSED_INPUT,
+            ConsoleMode.ENABLE_WINDOW_INPUT | ConsoleMode.ENABLE_PROCESSED_INPUT | ConsoleMode.ENABLE_MOUSE_INPUT,
         );
 
         return EventManager{
@@ -68,11 +63,11 @@ pub const EventManager = struct {
 
         for (self.raw_events[0..read], 0..) |raw, i| {
             self.events[i] = switch (raw.EventType) {
-                windows.INPUT_RECORD_TYPE.Key => ConsoleInputEvent{ .key = raw.Event.KeyEvent },
-                windows.INPUT_RECORD_TYPE.Mouse => ConsoleInputEvent{ .mouse = raw.Event.MouseEvent },
-                windows.INPUT_RECORD_TYPE.WindowBufferSize => ConsoleInputEvent{ .size = raw.Event.WindowBufferSizeEvent },
-                windows.INPUT_RECORD_TYPE.Menu => ConsoleInputEvent{ .menu = raw.Event.MenuEvent },
-                windows.INPUT_RECORD_TYPE.Focus => ConsoleInputEvent{ .focus = raw.Event.FocusEvent },
+                .Key => ConsoleInputEvent{ .key = raw.Event.KeyEvent },
+                .Mouse => ConsoleInputEvent{ .mouse = raw.Event.MouseEvent },
+                .WindowBufferSize => ConsoleInputEvent{ .size = raw.Event.WindowBufferSizeEvent },
+                .Menu => ConsoleInputEvent{ .menu = raw.Event.MenuEvent },
+                .Focus => ConsoleInputEvent{ .focus = raw.Event.FocusEvent },
             };
         }
 
