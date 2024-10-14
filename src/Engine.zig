@@ -1,29 +1,24 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
-
 const entt = @import("entt");
 const Entity = entt.Entity;
 const Registry = entt.Registry;
 
-const EventManager = @import("console.zig").EventManager;
-const Terminal = @import("Terminal.zig").Terminal;
-
-const colours = @import("colours.zig");
-const input_handlers = @import("input_handlers.zig");
-
-const c = @import("components.zig");
-
-const GameMap = @import("GameMap.zig").GameMap;
-const fov = @import("algo/fov.zig");
-const t = @import("Tile.zig");
-
-const arch = @import("arch.zig");
-
 const Action = @import("actions.zig").Action;
-
 const ai = @import("ai.zig");
-
+const arch = @import("arch.zig");
+const c = @import("components.zig");
+const colours = @import("colours.zig");
 const combat = @import("combat.zig");
+const EventManager = @import("console.zig").EventManager;
+const fov = @import("algo/fov.zig");
+const GameMap = @import("GameMap.zig").GameMap;
+const input_handlers = @import("input_handlers.zig");
+const MessageLog = @import("MessageLog.zig").MessageLog;
+const rf = @import("render_functions.zig");
+const RGB8 = @import("colours.zig").RGB8;
+const t = @import("Tile.zig");
+const Terminal = @import("Terminal.zig").Terminal;
 
 pub const Engine = struct {
     allocator: Allocator,
@@ -32,12 +27,13 @@ pub const Engine = struct {
     enemies: entt.MultiView(2, 0),
     event_manager: EventManager,
     map: GameMap,
+    message_log: MessageLog,
     player: Entity,
     registry: *Registry,
     running: bool,
     terminal: Terminal,
 
-    pub fn init(allocator: Allocator, event_manager: EventManager, map: GameMap, registry: *Registry, terminal: Terminal) Engine {
+    pub fn init(allocator: Allocator, event_manager: EventManager, map: GameMap, registry: *Registry, terminal: Terminal) !Engine {
         return Engine{
             .allocator = allocator,
             .blockers = registry.view(.{
@@ -48,6 +44,7 @@ pub const Engine = struct {
             .enemies = registry.view(.{ c.IsEnemy, c.Named }, .{}),
             .event_manager = event_manager,
             .map = map,
+            .message_log = try MessageLog.init(allocator),
             .player = 0,
             .registry = registry,
             .running = false,
@@ -91,10 +88,10 @@ pub const Engine = struct {
             }
         }
 
+        try self.message_log.render(&self.terminal, 21, 45, 40, 5);
+
         const fighter = self.registry.getConst(c.Fighter, self.player);
-        try self.terminal.setForegroundColour(colours.White);
-        try self.terminal.setBackgroundColour(colours.Black);
-        try self.terminal.printAt(1, self.terminal.height - 1, "HP: {}/{}    ", .{ fighter.hp, fighter.max_hp });
+        try rf.render_bar(&self.terminal, fighter.hp, fighter.max_hp, 20);
 
         try self.terminal.present();
     }
@@ -185,5 +182,10 @@ pub const Engine = struct {
         }
 
         return null;
+    }
+
+    pub fn add_to_log(self: *Engine, comptime fmt: []const u8, args: anytype, fg: RGB8, stack: bool) !void {
+        const text = try std.fmt.allocPrint(self.allocator, fmt, args);
+        try self.message_log.add(text, fg, stack);
     }
 };

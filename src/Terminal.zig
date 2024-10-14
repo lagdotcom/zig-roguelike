@@ -1,10 +1,9 @@
 const std = @import("std");
-const arch = @import("arch.zig");
-
-const colours = @import("colours.zig");
-const RGB8 = colours.RGB8;
 
 const ansi = @import("ansi.zig");
+const arch = @import("arch.zig");
+const co = @import("colours.zig");
+const RGB8 = co.RGB8;
 
 pub const Terminal = struct {
     buffer: std.io.BufferedWriter(4096, arch.File.Writer),
@@ -59,7 +58,7 @@ pub const Terminal = struct {
     }
 
     pub fn clear(self: *Self) !void {
-        try self.setBackgroundColour(colours.Black);
+        try self.setBackgroundColour(co.Black);
         try self.at(0, 0);
         _ = try self.buffer.write(ansi.erase_in_display_to_end);
     }
@@ -81,6 +80,10 @@ pub const Terminal = struct {
         _ = try self.buffer.write(ansi.soft_reset);
     }
 
+    pub fn resetColour(self: *Self) !void {
+        try self.buffer.writer().print(ansi.sgr, .{@intFromEnum(ansi.sgr_type.reset)});
+    }
+
     pub fn setForegroundColour(self: *Self, rgb: RGB8) !void {
         try self.buffer.writer().print(ansi.sgr_foreground_rgb, .{ rgb.r, rgb.g, rgb.b });
     }
@@ -91,5 +94,12 @@ pub const Terminal = struct {
 
     pub inline fn contains(self: *Self, x: i16, y: i16) bool {
         return x >= 0 and y >= 0 and x < self.width and y < self.height;
+    }
+
+    pub fn drawRect(self: *Self, x: i16, y: i16, width: usize, height: usize, ch: u8) !void {
+        for (0..height) |yo| {
+            try self.at(x, @intCast(@as(usize, @intCast(y)) + yo));
+            try self.buffer.writer().writeByteNTimes(ch, width);
+        }
     }
 };

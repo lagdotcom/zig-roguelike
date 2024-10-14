@@ -1,11 +1,9 @@
 const std = @import("std");
+const Entity = @import("entt").Entity;
 
 const Engine = @import("Engine.zig").Engine;
-
-const entt = @import("entt");
-const Entity = entt.Entity;
-
 const c = @import("components.zig");
+const co = @import("colours.zig");
 
 fn get_name(e: *Engine, entity: Entity) []const u8 {
     const named = e.registry.tryGetConst(c.Named, entity);
@@ -22,12 +20,13 @@ pub fn attack(e: *Engine, attack_entity: Entity, target_entity: Entity) !void {
     const attacker_name = get_name(e, attack_entity);
     const target_name = get_name(e, target_entity);
 
+    const col = if (e.registry.has(c.IsPlayer, attack_entity)) co.PlayerAttack else co.EnemyAttack;
     const damage = attacker.?.power - target.?.defense;
     if (damage > 0) {
-        std.log.debug("{} attacks {} for {} hit points", .{ attacker_name, target_name, damage });
+        try e.add_to_log("{s} attacks {s} for {d} hit points", .{ attacker_name, target_name, damage }, col, true);
         target.?.hp -= damage;
     } else {
-        std.log.debug("{} attacks {} but does no damage.", .{ attacker_name, target_name });
+        try e.add_to_log("{s} attacks {s} but does no damage.", .{ attacker_name, target_name }, col, true);
     }
 
     if (target.?.hp <= 0) try kill(e, target_entity);
@@ -35,6 +34,8 @@ pub fn attack(e: *Engine, attack_entity: Entity, target_entity: Entity) !void {
 
 pub fn kill(e: *Engine, target_entity: Entity) !void {
     const target_name = get_name(e, target_entity);
+    const is_dead_player = e.registry.has(c.IsPlayer, target_entity);
+    const col = if (is_dead_player) co.PlayerDie else co.EnemyDie;
 
     const maybe_position = e.registry.tryGetConst(c.Position, target_entity);
     if (maybe_position) |position| {
@@ -51,10 +52,10 @@ pub fn kill(e: *Engine, target_entity: Entity) !void {
         e.registry.add(corpse, c.Named{ .name = name });
     }
 
-    if (e.player != target_entity) {
+    if (!is_dead_player) {
         e.registry.destroy(target_entity);
-        std.log.debug("{} is dead!", .{target_name});
+        try e.add_to_log("{s} is dead!", .{target_name}, col, true);
     } else {
-        std.log.debug("You died. Kinda.", .{});
+        try e.add_to_log("You died. Kinda.", .{}, col, true);
     }
 }

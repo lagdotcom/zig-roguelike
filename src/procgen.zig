@@ -1,14 +1,11 @@
 const std = @import("std");
 const Random = std.rand;
-
-const Point = @import("common.zig").Point;
-const GameMap = @import("GameMap.zig").GameMap;
-const t = @import("Tile.zig");
-
-const entt = @import("entt");
-const Registry = entt.Registry;
+const Registry = @import("entt").Registry;
 
 const c = @import("components.zig");
+const GameMap = @import("GameMap.zig").GameMap;
+const Point = @import("common.zig").Point;
+const t = @import("Tile.zig");
 
 pub const RectangularRoom = struct {
     x1: GameMap.Coord,
@@ -114,11 +111,12 @@ pub fn generate_dungeon(
             const centre = new_room.centre();
             player_pos.x = centre.x;
             player_pos.y = centre.y;
+            try map.setBlocked(centre.x, centre.y);
         } else {
             try tunnel_between(rand, map, rooms.getLast().centre(), new_room.centre());
+            try place_entities(reg, rand, new_room, map, max_monsters_per_room);
         }
 
-        try place_entities(reg, rand, new_room, map, max_monsters_per_room);
         try rooms.append(new_room);
     }
 }
