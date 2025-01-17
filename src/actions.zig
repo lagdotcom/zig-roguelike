@@ -10,5 +10,10 @@ pub const Action = union(enum) {
     wait: void,
     movement: struct { dx: i8, dy: i8 },
     pickup: void,
-    use: struct { item: Entity },
+
+    cancel_menu: void,
+    show_use_inventory: void,
+    use_from_inventory: struct { index: usize },
+    show_drop_inventory: void,
+    drop_from_inventory: struct { index: usize },
 };

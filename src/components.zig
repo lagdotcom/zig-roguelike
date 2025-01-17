@@ -26,6 +26,6 @@ pub const IsPlayer = struct {};
 // items
 pub const Carried = struct { owner: Entity };
 pub const Consumable = struct {};
-pub const HealingConsumable = struct { amount: i16 };
+pub const HealingItem = struct { amount: i16 };
 pub const Inventory = struct { capacity: i16 };
 pub const Item = struct {};

@@ -5,11 +5,6 @@ const Engine = @import("Engine.zig").Engine;
 const c = @import("components.zig");
 const co = @import("colours.zig");
 
-fn get_name(e: *Engine, entity: Entity) []const u8 {
-    const named = e.registry.tryGetConst(c.Named, entity);
-    return if (named == null) "someone" else named.?.name;
-}
-
 pub fn attack(e: *Engine, attack_entity: Entity, target_entity: Entity) !void {
     const attacker = e.registry.tryGetConst(c.Fighter, attack_entity);
     if (attacker == null) return error.AttackIsNotAFighter;
@@ -17,8 +12,8 @@ pub fn attack(e: *Engine, attack_entity: Entity, target_entity: Entity) !void {
     const target = e.registry.tryGet(c.Fighter, target_entity);
     if (target == null) return error.TargetIsNotAFighter;
 
-    const attacker_name = get_name(e, attack_entity);
-    const target_name = get_name(e, target_entity);
+    const attacker_name = e.get_name(attack_entity);
+    const target_name = e.get_name(target_entity);
 
     const col = if (e.registry.has(c.IsPlayer, attack_entity)) co.PlayerAttack else co.EnemyAttack;
     const damage = attacker.?.power - target.?.defence;
@@ -33,7 +28,7 @@ pub fn attack(e: *Engine, attack_entity: Entity, target_entity: Entity) !void {
 }
 
 pub fn kill(e: *Engine, target_entity: Entity) !void {
-    const target_name = get_name(e, target_entity);
+    const target_name = e.get_name(target_entity);
     const is_dead_player = e.registry.has(c.IsPlayer, target_entity);
     const col = if (is_dead_player) co.PlayerDie else co.EnemyDie;
 

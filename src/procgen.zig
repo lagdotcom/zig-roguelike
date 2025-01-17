@@ -223,5 +223,6 @@ fn setup_health_potion(reg: *Registry, e: Entity) void {
         .order = c.RenderOrder.Item,
     });
     reg.add(e, c.Named{ .name = "Health Potion" });
-    reg.add(e, c.HealingConsumable{ .amount = 4 });
+    reg.add(e, c.Consumable{});
+    reg.add(e, c.HealingItem{ .amount = 4 });
 }

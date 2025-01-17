@@ -15,3 +15,18 @@ pub fn render_bar(terminal: *Terminal, current: i16, maximum: i16, total_width: 
     try terminal.setForegroundColour(co.BarText);
     try terminal.printAt(1, 45, "HP: {}/{}", .{ current, maximum });
 }
+
+pub fn render_box(terminal: *Terminal, x: i16, y: i16, w: usize, h: usize, fg: co.RGB8, bg: co.RGB8) !void {
+    try terminal.setForegroundColour(fg);
+    try terminal.setBackgroundColour(bg);
+
+    for (0..h) |oy| {
+        const fc: u8 = if (oy == 0) '\xda' else if (oy == h - 1) '\xc0' else '\xb3';
+        const mc: u8 = if (oy == 0) '\xc4' else if (oy == h - 1) '\xc4' else ' ';
+        const ec: u8 = if (oy == 0) '\xbf' else if (oy == h - 1) '\xd9' else '\xb3';
+
+        try terminal.printAt(x, y + @as(i16, @intCast(oy)), "{c}", .{fc});
+        try terminal.buffer.writer().writeByteNTimes(mc, w - 2);
+        try terminal.buffer.writer().writeByte(ec);
+    }
+}
