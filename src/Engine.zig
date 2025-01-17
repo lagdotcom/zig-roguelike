@@ -30,16 +30,16 @@ const GameState = enum {
 
 pub const Engine = struct {
     allocator: Allocator,
-    blockers: entt.MultiView(2, 0),
-    carried_items: entt.MultiView(2, 0),
-    drawables: entt.MultiView(2, 0),
-    enemies: entt.MultiView(2, 0),
+    blocker_view: entt.MultiView(2, 0),
+    carried_view: entt.MultiView(2, 0),
+    drawable_view: entt.MultiView(2, 0),
+    enemy_view: entt.MultiView(2, 0),
     event_manager: EventManager,
-    floor_items: entt.MultiView(2, 0),
+    floor_items_view: entt.MultiView(2, 0),
     map: GameMap,
     message_log: MessageLog,
     mouse_location: Point,
-    named: entt.MultiView(2, 0),
+    named_view: entt.MultiView(2, 0),
     player: Entity,
     registry: *Registry,
     running: bool,
@@ -49,16 +49,16 @@ pub const Engine = struct {
     pub fn init(allocator: Allocator, event_manager: EventManager, map: GameMap, registry: *Registry, terminal: Terminal) !Engine {
         return Engine{
             .allocator = allocator,
-            .blockers = registry.view(.{ c.BlocksMovement, c.Position }, .{}),
-            .carried_items = registry.view(.{ c.Carried, c.Item }, .{}),
-            .drawables = registry.view(.{ c.Glyph, c.Position }, .{}),
-            .enemies = registry.view(.{ c.IsEnemy, c.Named }, .{}),
+            .blocker_view = registry.view(.{ c.BlocksMovement, c.Position }, .{}),
+            .carried_view = registry.view(.{ c.Carried, c.Item }, .{}),
+            .drawable_view = registry.view(.{ c.Glyph, c.Position }, .{}),
+            .enemy_view = registry.view(.{ c.IsEnemy, c.Named }, .{}),
             .event_manager = event_manager,
-            .floor_items = registry.view(.{ c.Item, c.Position }, .{}),
+            .floor_items_view = registry.view(.{ c.Item, c.Position }, .{}),
             .map = map,
             .message_log = try MessageLog.init(allocator),
             .mouse_location = .{ .x = 0, .y = 0 },
-            .named = registry.view(.{ c.Named, c.Position }, .{}),
+            .named_view = registry.view(.{ c.Named, c.Position }, .{}),
             .player = 0,
             .registry = registry,
             .running = false,
@@ -75,7 +75,7 @@ pub const Engine = struct {
         self.terminal.deinit() catch {};
     }
 
-    pub fn setPlayer(self: *Engine, e: Entity) void {
+    pub fn set_player(self: *Engine, e: Entity) void {
         self.registry.add(e, c.IsPlayer{});
         self.player = e;
     }
@@ -83,10 +83,10 @@ pub const Engine = struct {
     pub fn render(self: *Engine) !void {
         try self.map.draw(&self.terminal);
 
-        try self.terminal.setForegroundColour(colours.White);
+        try self.terminal.set_foreground_colour(colours.white);
 
-        if (arch.runForever) {
-            try self.terminal.printAt(self.terminal.width - 20, self.terminal.height - 1, "Press ESCAPE to quit", .{});
+        if (arch.run_forever) {
+            try self.terminal.print_at(self.terminal.width - 20, self.terminal.height - 1, "Press ESCAPE to quit", .{});
         }
 
         try self.render_drawable_entities();
@@ -96,10 +96,10 @@ pub const Engine = struct {
         const fighter = self.registry.getConst(c.Fighter, self.player);
         try rf.render_bar(&self.terminal, fighter.hp, fighter.max_hp, 20);
 
-        try self.terminal.drawRect(21, 44, @intCast(self.terminal.width - 21), 1, ' ');
+        try self.terminal.draw_rectangle(21, 44, @intCast(self.terminal.width - 21), 1, ' ');
         const maybe_names = try self.get_names_at_location(self.mouse_location.x, self.mouse_location.y);
         if (maybe_names) |names| {
-            try self.terminal.printAt(21, 44, "{s}", .{names});
+            try self.terminal.print_at(21, 44, "{s}", .{names});
             self.allocator.free(names);
         }
 
@@ -113,16 +113,16 @@ pub const Engine = struct {
 
     fn render_drawable_entities(self: *Engine) !void {
         inline for (@typeInfo(c.RenderOrder).Enum.fields) |ro| {
-            var iter = self.drawables.entityIterator();
+            var iter = self.drawable_view.entityIterator();
             while (iter.next()) |entity| {
-                const glyph = self.drawables.getConst(c.Glyph, entity);
+                const glyph = self.drawable_view.getConst(c.Glyph, entity);
                 if (glyph.order != @as(c.RenderOrder, @enumFromInt(ro.value))) continue;
 
-                const pos = self.drawables.getConst(c.Position, entity);
+                const pos = self.drawable_view.getConst(c.Position, entity);
 
-                if (self.map.isVisible(pos.x, pos.y) and self.terminal.contains(pos.x, pos.y)) {
-                    try self.terminal.printAt(pos.x, pos.y, "{c}", .{glyph.ch});
-                    try self.terminal.setChar(pos.x, pos.y, glyph.colour, t.floor.light.bg, glyph.ch);
+                if (self.map.is_visible(pos.x, pos.y) and self.terminal.contains(pos.x, pos.y)) {
+                    try self.terminal.print_at(pos.x, pos.y, "{c}", .{glyph.ch});
+                    try self.terminal.set_char(pos.x, pos.y, glyph.colour, t.floor.light.bg, glyph.ch);
                 }
             }
         }
@@ -135,19 +135,19 @@ pub const Engine = struct {
         const count: i16 = @intCast(inventory.len);
         var y: i16 = @intCast(25 - @divFloor(count, 2));
 
-        try rf.render_box(&self.terminal, 15, @intCast(y - 2), 31, @intCast(count + 4), colours.White, colours.Black);
+        try rf.render_box(&self.terminal, 15, @intCast(y - 2), 31, @intCast(count + 4), colours.white, colours.black);
 
-        try self.terminal.setForegroundColour(colours.Yellow);
-        try self.terminal.printAt(18, @intCast(y - 2), "Inventory", .{});
-        try self.terminal.printAt(18, @intCast(y + count + 1), "ESCAPE to cancel", .{});
+        try self.terminal.set_foreground_colour(colours.yellow);
+        try self.terminal.print_at(18, @intCast(y - 2), "Inventory", .{});
+        try self.terminal.print_at(18, @intCast(y + count + 1), "ESCAPE to cancel", .{});
 
         var i: u8 = 0;
         for (inventory) |item| {
-            try self.terminal.setChar(17, y, colours.White, colours.Black, '(');
-            try self.terminal.setChar(18, y, colours.Yellow, colours.Black, @intCast(i + 97));
-            try self.terminal.setChar(19, y, colours.White, colours.Black, ')');
+            try self.terminal.set_char(17, y, colours.white, colours.black, '(');
+            try self.terminal.set_char(18, y, colours.yellow, colours.black, @intCast(i + 97));
+            try self.terminal.set_char(19, y, colours.white, colours.black, ')');
 
-            try self.terminal.printAt(21, y, "{s}", .{self.get_name(item)});
+            try self.terminal.print_at(21, y, "{s}", .{self.get_name(item)});
             y += 1;
             i += 1;
         }
@@ -168,7 +168,7 @@ pub const Engine = struct {
                     const pos = e.dwMousePosition;
                     if (self.map.contains(pos.X, pos.Y)) self.mouse_location = .{ .x = pos.X, .y = pos.Y };
 
-                    try self.terminal.printAt(21, 43, "e{d} b{d}: {d},{d}", .{ e.dwEventFlags, e.dwButtonState, e.dwMousePosition.X, e.dwMousePosition.Y });
+                    try self.terminal.print_at(21, 43, "e{d} b{d}: {d},{d}", .{ e.dwEventFlags, e.dwButtonState, e.dwMousePosition.X, e.dwMousePosition.Y });
                 },
 
                 else => {},
@@ -186,7 +186,7 @@ pub const Engine = struct {
     }
 
     pub fn handle_enemy_turns(self: *Engine) !void {
-        var iter = self.enemies.entityIterator();
+        var iter = self.enemy_view.entityIterator();
         while (iter.next()) |entity| {
             if (self.registry.has(c.BaseAI, entity)) try ai.base_ai(self, entity);
         }
@@ -206,7 +206,7 @@ pub const Engine = struct {
                 const dest_x = position.x + move.dx;
                 const dest_y = position.y + move.dy;
 
-                if (self.map.contains(dest_x, dest_y) and self.map.getTile(dest_x, dest_y).walkable) {
+                if (self.map.contains(dest_x, dest_y) and self.map.get_tile(dest_x, dest_y).walkable) {
                     spend_turn = true;
 
                     const maybe_blocker = self.get_blocker_at_location(dest_x, dest_y);
@@ -236,7 +236,7 @@ pub const Engine = struct {
 
                     self.registry.remove(c.Position, item);
                     self.registry.add(item, c.Carried{ .owner = self.player });
-                    try self.add_to_log("You pick up the {s}.", .{self.get_name(item)}, colours.White, true);
+                    try self.add_to_log("You pick up the {s}.", .{self.get_name(item)}, colours.white, true);
                     carry_count += 1;
                     spend_turn = true;
                 }
@@ -287,7 +287,7 @@ pub const Engine = struct {
 
                     self.registry.remove(c.Carried, item);
                     self.registry.add(item, c.Position{ .x = position.x, .y = position.y });
-                    try self.add_to_log("You drop the {s}.", .{self.get_name(item)}, colours.White, true);
+                    try self.add_to_log("You drop the {s}.", .{self.get_name(item)}, colours.white, true);
 
                     spend_turn = true;
                     self.state = .InDungeon;
@@ -319,7 +319,7 @@ pub const Engine = struct {
                 if (heal_amount > 0) {
                     spend_turn = true;
                     fighter.hp = final_hp;
-                    try self.add_to_log("You drink the {s}, healing {d} hp.", .{ self.get_name(item), heal_amount }, colours.White, true);
+                    try self.add_to_log("You drink the {s}, healing {d} hp.", .{ self.get_name(item), heal_amount }, colours.health_recovered, true);
                 } else {
                     try self.impossible("You don't need healing.", .{});
                 }
@@ -351,9 +351,9 @@ pub const Engine = struct {
     }
 
     pub fn get_blocker_at_location(self: *Engine, x: GameMap.Coord, y: GameMap.Coord) ?Entity {
-        var iter = self.blockers.entityIterator();
+        var iter = self.blocker_view.entityIterator();
         while (iter.next()) |entity| {
-            const pos = self.drawables.getConst(c.Position, entity);
+            const pos = self.drawable_view.getConst(c.Position, entity);
             if (pos.x == x and pos.y == y) return entity;
         }
 
@@ -362,7 +362,7 @@ pub const Engine = struct {
 
     pub fn get_items_at_location(self: *Engine, x: GameMap.Coord, y: GameMap.Coord) ![]Entity {
         var items = std.ArrayList(Entity).init(self.allocator);
-        var iter = self.floor_items.entityIterator();
+        var iter = self.floor_items_view.entityIterator();
         while (iter.next()) |entity| {
             const position = self.registry.getConst(c.Position, entity);
             if (position.x == x and position.y == y) try items.append(entity);
@@ -373,7 +373,7 @@ pub const Engine = struct {
 
     pub fn get_carried_items(self: *Engine, owner: Entity) ![]Entity {
         var items = std.ArrayList(Entity).init(self.allocator);
-        var iter = self.carried_items.entityIterator();
+        var iter = self.carried_view.entityIterator();
         while (iter.next()) |entity| {
             if (self.registry.getConst(c.Carried, entity).owner == owner) try items.append(entity);
         }
@@ -387,7 +387,7 @@ pub const Engine = struct {
     }
 
     pub fn impossible(self: *Engine, comptime fmt: []const u8, args: anytype) !void {
-        return self.add_to_log(fmt, args, colours.Impossible, true);
+        return self.add_to_log(fmt, args, colours.impossible, true);
     }
 
     pub fn get_name(self: *Engine, entity: Entity) []const u8 {
@@ -395,12 +395,12 @@ pub const Engine = struct {
     }
 
     pub fn get_names_at_location(self: *Engine, x: GameMap.Coord, y: GameMap.Coord) !?[]const u8 {
-        if (!self.map.contains(x, y) or !self.map.isVisible(x, y)) return null;
+        if (!self.map.contains(x, y) or !self.map.is_visible(x, y)) return null;
 
         var names = std.ArrayList([]const u8).init(self.allocator);
         defer names.deinit();
 
-        var iter = self.named.entityIterator();
+        var iter = self.named_view.entityIterator();
         while (iter.next()) |entity| {
             const pos = self.registry.getConst(c.Position, entity);
             if (pos.x == x and pos.y == y) try names.append(self.get_name(entity));

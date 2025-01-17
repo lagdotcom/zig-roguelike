@@ -15,13 +15,13 @@ pub fn attack(e: *Engine, attack_entity: Entity, target_entity: Entity) !void {
     const attacker_name = e.get_name(attack_entity);
     const target_name = e.get_name(target_entity);
 
-    const col = if (e.registry.has(c.IsPlayer, attack_entity)) co.PlayerAttack else co.EnemyAttack;
+    const fg = if (e.registry.has(c.IsPlayer, attack_entity)) co.player_attack else co.enemy_attack;
     const damage = attacker.?.power - target.?.defence;
     if (damage > 0) {
-        try e.add_to_log("{s} attacks {s} for {d} hit points", .{ attacker_name, target_name, damage }, col, true);
+        try e.add_to_log("{s} attacks {s} for {d} hit points", .{ attacker_name, target_name, damage }, fg, true);
         take_damage(target.?, damage);
     } else {
-        try e.add_to_log("{s} attacks {s} but does no damage.", .{ attacker_name, target_name }, col, true);
+        try e.add_to_log("{s} attacks {s} but does no damage.", .{ attacker_name, target_name }, fg, true);
     }
 
     if (target.?.hp <= 0) try kill(e, target_entity);
@@ -30,7 +30,7 @@ pub fn attack(e: *Engine, attack_entity: Entity, target_entity: Entity) !void {
 pub fn kill(e: *Engine, target_entity: Entity) !void {
     const target_name = e.get_name(target_entity);
     const is_dead_player = e.registry.has(c.IsPlayer, target_entity);
-    const col = if (is_dead_player) co.PlayerDie else co.EnemyDie;
+    const fg = if (is_dead_player) co.player_die else co.enemy_die;
 
     const maybe_position = e.registry.tryGetConst(c.Position, target_entity);
     if (maybe_position) |position| {
@@ -49,9 +49,9 @@ pub fn kill(e: *Engine, target_entity: Entity) !void {
 
     if (!is_dead_player) {
         e.registry.destroy(target_entity);
-        try e.add_to_log("{s} is dead!", .{target_name}, col, true);
+        try e.add_to_log("{s} is dead!", .{target_name}, fg, true);
     } else {
-        try e.add_to_log("You died. Kinda.", .{}, col, true);
+        try e.add_to_log("You died. Kinda.", .{}, fg, true);
     }
 }
 

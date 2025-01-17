@@ -17,7 +17,7 @@ pub fn myLogFn(
     _ = level;
     _ = scope;
 
-    const stderr = arch.getStdErr().writer();
+    const stderr = arch.get_stderr().writer();
     stderr.print(format, args) catch {};
 }
 
@@ -36,7 +36,7 @@ const allocator = arena.allocator();
 pub fn main() !void {
     var engine = try setup();
 
-    if (arch.runForever) {
+    if (arch.run_forever) {
         defer engine.deinit();
         try engine.run();
     } else {
@@ -45,13 +45,13 @@ pub fn main() !void {
 }
 
 fn setup() !Engine {
-    const term = try Terminal.init(arch.getStdOut(), "Ziglike");
+    const term = try Terminal.init(arch.get_stdout(), "Ziglike");
 
-    const events = try EventManager.init(allocator, 100, arch.getStdIn());
+    const events = try EventManager.init(allocator, 100, arch.get_stdin());
 
     var prng = std.rand.DefaultPrng.init(blk: {
         var seed: u64 = undefined;
-        try arch.getrandom(std.mem.asBytes(&seed));
+        try arch.get_random(std.mem.asBytes(&seed));
         break :blk seed;
     });
     const rand = prng.random();
@@ -77,14 +77,14 @@ fn setup() !Engine {
     reg.add(player, start);
     reg.add(player, c.Glyph{
         .ch = '@',
-        .colour = co.White,
+        .colour = co.white,
         .order = c.RenderOrder.Actor,
     });
     reg.add(player, c.Fighter{ .hp = 30, .max_hp = 30, .defence = 2, .power = 5 });
     reg.add(player, c.Inventory{ .capacity = 26 });
-    engine.setPlayer(player);
+    engine.set_player(player);
 
-    try engine.message_log.add("Hello and welcome, adventurer, to yet another dungeon!", co.WelcomeText, false);
+    try engine.message_log.add("Hello and welcome, adventurer, to yet another dungeon!", co.welcome_text, false);
 
     try engine.render();
     return engine;

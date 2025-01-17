@@ -115,7 +115,7 @@ pub fn generate_dungeon(
             const centre = new_room.centre();
             player_pos.x = centre.x;
             player_pos.y = centre.y;
-            try map.setBlocked(centre.x, centre.y);
+            try map.set_blocked(centre.x, centre.y);
         } else {
             try tunnel_between(rand, map, rooms.getLast().centre(), new_room.centre());
             try place_entities(reg, rand, new_room, map, max_monsters_per_room, max_items_per_room);
@@ -139,7 +139,7 @@ fn carve_straight_line(map: *GameMap, start: Point, end: Point) !void {
     const dy = std.math.sign(end.y - start.y);
 
     while (x != end.x or y != end.y) {
-        try map.setTile(x, y, t.floor);
+        try map.set_tile(x, y, t.floor);
 
         x += dx;
         y += dy;
@@ -154,8 +154,8 @@ fn place_entities(reg: *Registry, rand: Random, room: RectangularRoom, map: *Gam
         const x = rand.intRangeAtMost(GameMap.Coord, room.x1 + 1, room.x2 - 1);
         const y = rand.intRangeAtMost(GameMap.Coord, room.y1 + 1, room.y2 - 1);
 
-        if (!map.isBlocked(x, y)) {
-            try map.setBlocked(x, y);
+        if (!map.is_blocked(x, y)) {
+            try map.set_blocked(x, y);
             const monster = spawn_monster(reg, x, y);
 
             if (rand.float(f32) < 0.8) {
@@ -170,8 +170,8 @@ fn place_entities(reg: *Registry, rand: Random, room: RectangularRoom, map: *Gam
         const x = rand.intRangeAtMost(GameMap.Coord, room.x1 + 1, room.x2 - 1);
         const y = rand.intRangeAtMost(GameMap.Coord, room.y1 + 1, room.y2 - 1);
 
-        if (!map.isBlocked(x, y)) {
-            try map.setBlocked(x, y);
+        if (!map.is_blocked(x, y)) {
+            try map.set_blocked(x, y);
             const item = spawn_item(reg, x, y);
 
             setup_health_potion(reg, item);

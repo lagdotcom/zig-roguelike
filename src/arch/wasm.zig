@@ -35,38 +35,38 @@ pub const File = struct {
     pub const Writer = std.io.GenericWriter(File, error{}, file_write);
 };
 
-pub fn getStdIn() File {
+pub fn get_stdin() File {
     return .{ .handle = 0 };
 }
-pub fn getStdOut() File {
+pub fn get_stdout() File {
     return .{ .handle = 1 };
 }
-pub fn getStdErr() File {
+pub fn get_stderr() File {
     return .{ .handle = 2 };
 }
 
-pub fn getSize(f: File) ConsoleSize {
+pub fn get_console_size(f: File) ConsoleSize {
     var dimensions = ConsoleSize{ .width = 0, .height = 0 };
     getConsoleSize(f.handle, &dimensions);
     return dimensions;
 }
 
-pub fn getrandom(buffer: []u8) !void {
+pub fn get_random(buffer: []u8) !void {
     getRandomBytes(buffer.ptr, buffer.len);
 }
 
-pub fn setMode(f: File, mode: u32) u32 {
+pub fn set_console_mode(f: File, mode: u32) u32 {
     const oldMode = getConsoleMode(f.handle);
     setConsoleMode(f.handle, mode);
 
     return oldMode;
 }
 
-pub fn getConsoleInputRecords(f: File, buffer: []windows.INPUT_RECORD_W) u32 {
+pub fn get_console_input_records(f: File, buffer: []windows.INPUT_RECORD_W) u32 {
     return getConsoleInput(f.handle, buffer.ptr, buffer.len);
 }
 
-pub const runForever = false;
+pub const run_forever = false;
 pub fn ready(engine: *Engine) void {
     setEngineAddress(engine);
 }

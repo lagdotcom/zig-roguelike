@@ -94,8 +94,8 @@ const Node = struct {
     hcost: usize = 0,
 };
 const NodeMap = std.AutoHashMap(usize, Node);
-const NodeQueue = std.PriorityQueue(usize, *const NodeMap, compareNode);
-fn compareNode(map: *const NodeMap, n1: usize, n2: usize) math.Order {
+const NodeQueue = std.PriorityQueue(usize, *const NodeMap, compare_node);
+fn compare_node(map: *const NodeMap, n1: usize, n2: usize) math.Order {
     const node1 = map.get(n1).?;
     const node2 = map.get(n2).?;
     return math.order(node1.gcost + node1.hcost, node2.gcost + node2.hcost);

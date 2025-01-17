@@ -39,12 +39,12 @@ pub const MessageLog = struct {
         const allocator = self.messages.allocator;
         var y_offset: i16 = @intCast(height);
 
-        try terminal.setBackgroundColour(co.Black);
-        try terminal.drawRect(x, y, width, height, ' ');
+        try terminal.set_background_colour(co.black);
+        try terminal.draw_rectangle(x, y, width, height, ' ');
 
         var iter = std.mem.reverseIterator(self.messages.items);
         while (iter.next()) |message| {
-            try terminal.setForegroundColour(message.fg);
+            try terminal.set_foreground_colour(message.fg);
 
             const text = if (message.count > 1) try std.fmt.allocPrint(allocator, "{s} (x{d})", .{ message.plain_text, message.count }) else message.plain_text;
 
@@ -56,7 +56,7 @@ pub const MessageLog = struct {
 
             var reverser = std.mem.reverseIterator(lines.items);
             while (reverser.next()) |line| {
-                try terminal.printAt(@intCast(x), @intCast(y + y_offset - 1), "{s}", .{line});
+                try terminal.print_at(@intCast(x), @intCast(y + y_offset - 1), "{s}", .{line});
 
                 y_offset -= 1;
                 if (y_offset == 0) return;

@@ -13,17 +13,17 @@ pub const Tile = struct {
     light: TileGraphics,
 };
 
-pub const shroud: TileGraphics = .{ .ch = ' ', .fg = colours.White, .bg = colours.Black };
+pub const shroud: TileGraphics = .{ .ch = ' ', .fg = colours.white, .bg = colours.black };
 
 pub const floor: Tile = .{
     .walkable = true,
     .transparent = true,
-    .dark = .{ .ch = ' ', .fg = colours.White, .bg = colours.LightBlue },
-    .light = .{ .ch = ' ', .fg = colours.White, .bg = colours.LightYellow },
+    .dark = .{ .ch = ' ', .fg = colours.white, .bg = colours.light_blue },
+    .light = .{ .ch = ' ', .fg = colours.white, .bg = colours.light_yellow },
 };
 pub const wall: Tile = .{
     .walkable = false,
     .transparent = false,
-    .dark = .{ .ch = ' ', .fg = colours.White, .bg = colours.DarkBlue },
-    .light = .{ .ch = ' ', .fg = colours.White, .bg = colours.DarkYellow },
+    .dark = .{ .ch = ' ', .fg = colours.white, .bg = colours.dark_blue },
+    .light = .{ .ch = ' ', .fg = colours.white, .bg = colours.dark_yellow },
 };

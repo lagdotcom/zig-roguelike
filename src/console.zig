@@ -38,7 +38,7 @@ pub const EventManager = struct {
     old_mode: u32,
 
     pub fn init(allocator: Allocator, size: usize, file: arch.File) !EventManager {
-        const old_mode = arch.setMode(
+        const old_mode = arch.set_console_mode(
             file,
             ConsoleMode.ENABLE_WINDOW_INPUT | ConsoleMode.ENABLE_PROCESSED_INPUT | ConsoleMode.ENABLE_MOUSE_INPUT,
         );
@@ -55,11 +55,11 @@ pub const EventManager = struct {
     pub fn deinit(self: EventManager) void {
         self.allocator.free(self.raw_events);
         self.allocator.free(self.events);
-        _ = arch.setMode(self.file, self.old_mode);
+        _ = arch.set_console_mode(self.file, self.old_mode);
     }
 
     pub fn wait(self: EventManager) []ConsoleInputEvent {
-        const read = arch.getConsoleInput(self.file, self.raw_events);
+        const read = arch.get_console_input_records(self.file, self.raw_events);
 
         for (self.raw_events[0..read], 0..) |raw, i| {
             self.events[i] = switch (raw.EventType) {

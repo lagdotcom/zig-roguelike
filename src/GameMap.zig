@@ -17,23 +17,23 @@ pub const GameMap = struct {
     allocator: Allocator,
     width: usize,
     height: usize,
-    tileCount: usize,
+    tile_count: usize,
     tiles: []t.Tile,
     visible: []bool,
     explored: []bool,
     blocked: Set(Index),
 
     pub fn init(allocator: Allocator, width: usize, height: usize) !GameMap {
-        const tileCount = width * height;
+        const tile_count = width * height;
 
         const map = GameMap{
             .allocator = allocator,
             .width = width,
             .height = height,
-            .tileCount = tileCount,
-            .tiles = try allocator.alloc(t.Tile, tileCount),
-            .visible = try allocator.alloc(bool, tileCount),
-            .explored = try allocator.alloc(bool, tileCount),
+            .tile_count = tile_count,
+            .tiles = try allocator.alloc(t.Tile, tile_count),
+            .visible = try allocator.alloc(bool, tile_count),
+            .explored = try allocator.alloc(bool, tile_count),
             .blocked = Set(Index).init(allocator),
         };
 
@@ -48,48 +48,48 @@ pub const GameMap = struct {
         return x >= 0 and y >= 0 and x < self.width and y < self.height;
     }
 
-    pub inline fn getIndex(self: GameMap, x: Coord, y: Coord) Index {
+    pub inline fn get_index(self: GameMap, x: Coord, y: Coord) Index {
         return @as(Index, @intCast(y)) * self.width + @as(Index, @intCast(x));
     }
 
-    pub inline fn getPoint(self: GameMap, i: Index) common.Point {
+    pub inline fn get_point(self: GameMap, i: Index) common.Point {
         const x: Coord = @intCast(i % self.width);
         const y: Coord = @intCast(i / self.width);
         return .{ .x = x, .y = y };
     }
 
-    pub fn setTile(self: GameMap, x: Coord, y: Coord, tile: t.Tile) !void {
+    pub fn set_tile(self: GameMap, x: Coord, y: Coord, tile: t.Tile) !void {
         if (!self.contains(x, y)) return error.OutOfBounds;
-        self.tiles[self.getIndex(x, y)] = tile;
+        self.tiles[self.get_index(x, y)] = tile;
     }
 
-    pub fn getTile(self: GameMap, x: Coord, y: Coord) t.Tile {
-        return if (self.contains(x, y)) self.tiles[self.getIndex(x, y)] else t.wall;
+    pub fn get_tile(self: GameMap, x: Coord, y: Coord) t.Tile {
+        return if (self.contains(x, y)) self.tiles[self.get_index(x, y)] else t.wall;
     }
 
-    pub fn setBlocked(self: *GameMap, x: Coord, y: Coord) !void {
-        _ = try self.blocked.add(self.getIndex(x, y));
+    pub fn set_blocked(self: *GameMap, x: Coord, y: Coord) !void {
+        _ = try self.blocked.add(self.get_index(x, y));
     }
 
-    pub fn isBlocked(self: GameMap, x: Coord, y: Coord) bool {
-        return self.blocked.contains(self.getIndex(x, y));
+    pub fn is_blocked(self: GameMap, x: Coord, y: Coord) bool {
+        return self.blocked.contains(self.get_index(x, y));
     }
 
     pub fn fill(self: GameMap, tile: t.Tile) !void {
-        for (0..self.tileCount) |i| {
+        for (0..self.tile_count) |i| {
             self.tiles[i] = tile;
             self.visible[i] = false;
             self.explored[i] = false;
         }
     }
 
-    pub fn isVisible(self: GameMap, x: Coord, y: Coord) bool {
-        return if (self.contains(x, y)) self.visible[self.getIndex(x, y)] else false;
+    pub fn is_visible(self: GameMap, x: Coord, y: Coord) bool {
+        return if (self.contains(x, y)) self.visible[self.get_index(x, y)] else false;
     }
 
-    pub fn setVisible(self: GameMap, x: Coord, y: Coord, visible: bool) void {
+    pub fn set_visible(self: GameMap, x: Coord, y: Coord, visible: bool) void {
         if (self.contains(x, y)) {
-            const index = self.getIndex(x, y);
+            const index = self.get_index(x, y);
             self.visible[index] = visible;
             if (visible) {
                 self.explored[index] = true;
@@ -100,7 +100,7 @@ pub const GameMap = struct {
     pub fn carve(self: GameMap, room: p.RectangularRoom) !void {
         var iter = room.inner().iterate();
         while (iter.next()) |point| {
-            try self.setTile(point.x, point.y, t.floor);
+            try self.set_tile(point.x, point.y, t.floor);
         }
     }
 
@@ -108,14 +108,14 @@ pub const GameMap = struct {
         var x: Coord = 0;
         var y: Coord = 0;
 
-        for (0..self.tileCount) |index| {
+        for (0..self.tile_count) |index| {
             const tile = self.tiles[index];
             const visible = self.visible[index];
             const explored = self.explored[index];
 
             const glyph = if (visible) tile.light else if (explored) tile.dark else t.shroud;
 
-            try term.setChar(x, y, glyph.fg, glyph.bg, glyph.ch);
+            try term.set_char(x, y, glyph.fg, glyph.bg, glyph.ch);
 
             x += 1;
             if (x >= self.width) {

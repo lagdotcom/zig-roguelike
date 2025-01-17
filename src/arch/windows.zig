@@ -288,14 +288,14 @@ pub const ConsoleSize = struct {
     height: i16,
 };
 
-pub fn getSize(out: std.fs.File) ConsoleSize {
+pub fn get_console_size(out: std.fs.File) ConsoleSize {
     var info: windows.CONSOLE_SCREEN_BUFFER_INFO = undefined;
     _ = GetConsoleScreenBufferInfo(out.handle, &info);
 
     return .{ .width = info.dwSize.X, .height = info.dwSize.Y };
 }
 
-pub fn setMode(in: std.fs.File, mode: u32) u32 {
+pub fn set_console_mode(in: std.fs.File, mode: u32) u32 {
     var oldMode: u32 = undefined;
     _ = GetConsoleMode(in.handle, &oldMode);
     _ = SetConsoleMode(in.handle, mode);
@@ -304,12 +304,12 @@ pub fn setMode(in: std.fs.File, mode: u32) u32 {
 }
 
 pub const File = std.fs.File;
-pub const getStdErr = std.io.getStdErr;
-pub const getStdIn = std.io.getStdIn;
-pub const getStdOut = std.io.getStdOut;
-pub const getrandom = std.posix.getrandom;
+pub const get_stderr = std.io.getStdErr;
+pub const get_stdin = std.io.getStdIn;
+pub const get_stdout = std.io.getStdOut;
+pub const get_random = std.posix.getrandom;
 
-pub fn getConsoleInputRecords(f: File, buffer: []INPUT_RECORD_W) u32 {
+pub fn get_console_input_records(f: File, buffer: []INPUT_RECORD_W) u32 {
     var read: u32 = undefined;
     _ = ReadConsoleInputW(
         f.handle,
@@ -321,4 +321,4 @@ pub fn getConsoleInputRecords(f: File, buffer: []INPUT_RECORD_W) u32 {
     return read;
 }
 
-pub const runForever = true;
+pub const run_forever = true;
