@@ -1,3 +1,12 @@
+const displayConversion = {
+  ￚ: "┌",
+  ￄ: "─",
+  "﾿": "┐",
+  ﾳ: "│",
+  "￀": "└",
+  "￙": "┘",
+};
+
 class Display {
   /**
    * @param {number} width
@@ -51,8 +60,10 @@ class Display {
    * @param {string} c
    */
   set(x, y, c) {
+    const ch = displayConversion[c] ?? c;
     const td = this.rows[y][x];
-    td.innerText = c;
+
+    td.innerText = ch;
     td.style.color = this.fg;
     td.style.backgroundColor = this.bg;
   }
@@ -436,7 +447,8 @@ class Env {
     const data = new Int8Array(this.memory.buffer, buffer, len);
     const str = new TextDecoder().decode(data);
 
-    if (h === 1) for (const ch of str) this.parser.feed(ch);
+    if (h === 1)
+      for (const ch of data) this.parser.feed(String.fromCharCode(ch));
     else console.warn(`fd=${h}: ${str}`);
   };
 
