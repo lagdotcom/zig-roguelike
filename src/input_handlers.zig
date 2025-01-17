@@ -16,6 +16,8 @@ pub fn process(event: windows.KEY_EVENT_RECORD_W) ?Action {
         .Numpad5 => .wait,
         .Clear => .wait,
 
+        .KeyG => .pickup,
+
         else => null,
     };
 }

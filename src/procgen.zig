@@ -1,6 +1,9 @@
 const std = @import("std");
 const Random = std.rand;
-const Registry = @import("entt").Registry;
+
+const entt = @import("entt");
+const Entity = entt.Entity;
+const Registry = entt.Registry;
 
 const c = @import("components.zig");
 const GameMap = @import("GameMap.zig").GameMap;
@@ -81,6 +84,7 @@ pub fn generate_dungeon(
     room_min_size: usize,
     max_rooms: usize,
     max_monsters_per_room: usize,
+    max_items_per_room: usize,
     player_pos: *Point,
 ) !void {
     var rooms = try std.ArrayList(RectangularRoom).initCapacity(map.allocator, max_rooms);
@@ -114,7 +118,7 @@ pub fn generate_dungeon(
             try map.setBlocked(centre.x, centre.y);
         } else {
             try tunnel_between(rand, map, rooms.getLast().centre(), new_room.centre());
-            try place_entities(reg, rand, new_room, map, max_monsters_per_room);
+            try place_entities(reg, rand, new_room, map, max_monsters_per_room, max_items_per_room);
         }
 
         try rooms.append(new_room);
@@ -142,8 +146,9 @@ fn carve_straight_line(map: *GameMap, start: Point, end: Point) !void {
     }
 }
 
-fn place_entities(reg: *Registry, rand: Random, room: RectangularRoom, map: *GameMap, maximum_monsters: usize) !void {
+fn place_entities(reg: *Registry, rand: Random, room: RectangularRoom, map: *GameMap, maximum_monsters: usize, maximum_items: usize) !void {
     const number_of_monsters = rand.intRangeAtMost(usize, 0, maximum_monsters);
+    const number_of_items = rand.intRangeAtMost(usize, 0, maximum_items);
 
     for (0..number_of_monsters) |_| {
         const x = rand.intRangeAtMost(GameMap.Coord, room.x1 + 1, room.x2 - 1);
@@ -151,30 +156,72 @@ fn place_entities(reg: *Registry, rand: Random, room: RectangularRoom, map: *Gam
 
         if (!map.isBlocked(x, y)) {
             try map.setBlocked(x, y);
-            const monster = reg.create();
-            reg.add(monster, c.Position{ .x = x, .y = y });
-            reg.add(monster, c.BlocksMovement{});
-            reg.add(monster, c.IsEnemy{});
+            const monster = spawn_monster(reg, x, y);
 
             if (rand.float(f32) < 0.8) {
-                reg.add(monster, c.Glyph{
-                    .ch = 'o',
-                    .colour = .{ .r = 63, .g = 127, .b = 63 },
-                    .order = c.RenderOrder.Actor,
-                });
-                reg.add(monster, c.Named{ .name = "Orc" });
-                reg.add(monster, c.Fighter{ .hp = 10, .max_hp = 10, .defense = 0, .power = 3 });
-                reg.add(monster, c.BaseAI{});
+                setup_orc(reg, monster);
             } else {
-                reg.add(monster, c.Glyph{
-                    .ch = 'T',
-                    .colour = .{ .r = 0, .g = 127, .b = 0 },
-                    .order = c.RenderOrder.Actor,
-                });
-                reg.add(monster, c.Named{ .name = "Troll" });
-                reg.add(monster, c.Fighter{ .hp = 16, .max_hp = 16, .defense = 1, .power = 4 });
-                reg.add(monster, c.BaseAI{});
+                setup_troll(reg, monster);
             }
         }
     }
+
+    for (0..number_of_items) |_| {
+        const x = rand.intRangeAtMost(GameMap.Coord, room.x1 + 1, room.x2 - 1);
+        const y = rand.intRangeAtMost(GameMap.Coord, room.y1 + 1, room.y2 - 1);
+
+        if (!map.isBlocked(x, y)) {
+            try map.setBlocked(x, y);
+            const item = spawn_item(reg, x, y);
+
+            setup_health_potion(reg, item);
+        }
+    }
+}
+
+fn spawn_monster(reg: *Registry, x: i16, y: i16) Entity {
+    const monster = reg.create();
+    reg.add(monster, c.Position{ .x = x, .y = y });
+    reg.add(monster, c.BlocksMovement{});
+    reg.add(monster, c.IsEnemy{});
+    return monster;
+}
+
+fn setup_orc(reg: *Registry, e: Entity) void {
+    reg.add(e, c.Glyph{
+        .ch = 'o',
+        .colour = .{ .r = 63, .g = 127, .b = 63 },
+        .order = c.RenderOrder.Actor,
+    });
+    reg.add(e, c.Named{ .name = "Orc" });
+    reg.add(e, c.Fighter{ .hp = 10, .max_hp = 10, .defence = 0, .power = 3 });
+    reg.add(e, c.BaseAI{});
+}
+
+fn setup_troll(reg: *Registry, e: Entity) void {
+    reg.add(e, c.Glyph{
+        .ch = 'T',
+        .colour = .{ .r = 0, .g = 127, .b = 0 },
+        .order = c.RenderOrder.Actor,
+    });
+    reg.add(e, c.Named{ .name = "Troll" });
+    reg.add(e, c.Fighter{ .hp = 16, .max_hp = 16, .defence = 1, .power = 4 });
+    reg.add(e, c.BaseAI{});
+}
+
+fn spawn_item(reg: *Registry, x: i16, y: i16) Entity {
+    const item = reg.create();
+    reg.add(item, c.Position{ .x = x, .y = y });
+    reg.add(item, c.Item{});
+    return item;
+}
+
+fn setup_health_potion(reg: *Registry, e: Entity) void {
+    reg.add(e, c.Glyph{
+        .ch = '!',
+        .colour = .{ .r = 127, .g = 0, .b = 255 },
+        .order = c.RenderOrder.Item,
+    });
+    reg.add(e, c.Named{ .name = "Health Potion" });
+    reg.add(e, c.HealingConsumable{ .amount = 4 });
 }

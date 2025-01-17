@@ -14,17 +14,17 @@ pub fn attack(e: *Engine, attack_entity: Entity, target_entity: Entity) !void {
     const attacker = e.registry.tryGetConst(c.Fighter, attack_entity);
     if (attacker == null) return error.AttackIsNotAFighter;
 
-    var target = e.registry.tryGet(c.Fighter, target_entity);
+    const target = e.registry.tryGet(c.Fighter, target_entity);
     if (target == null) return error.TargetIsNotAFighter;
 
     const attacker_name = get_name(e, attack_entity);
     const target_name = get_name(e, target_entity);
 
     const col = if (e.registry.has(c.IsPlayer, attack_entity)) co.PlayerAttack else co.EnemyAttack;
-    const damage = attacker.?.power - target.?.defense;
+    const damage = attacker.?.power - target.?.defence;
     if (damage > 0) {
         try e.add_to_log("{s} attacks {s} for {d} hit points", .{ attacker_name, target_name, damage }, col, true);
-        target.?.hp -= damage;
+        take_damage(target.?, damage);
     } else {
         try e.add_to_log("{s} attacks {s} but does no damage.", .{ attacker_name, target_name }, col, true);
     }
@@ -58,4 +58,18 @@ pub fn kill(e: *Engine, target_entity: Entity) !void {
     } else {
         try e.add_to_log("You died. Kinda.", .{}, col, true);
     }
+}
+
+pub fn heal(fighter: *c.Fighter, amount: i16) i16 {
+    if (fighter.hp >= fighter.max_hp) return 0;
+
+    const new_hp_value = @min(fighter.hp + amount, fighter.max_hp);
+    const amount_recovered = new_hp_value - fighter.hp;
+
+    fighter.hp = new_hp_value;
+    return amount_recovered;
+}
+
+pub fn take_damage(fighter: *c.Fighter, amount: i16) void {
+    fighter.hp -= amount;
 }

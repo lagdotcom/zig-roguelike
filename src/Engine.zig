@@ -24,9 +24,11 @@ const Terminal = @import("Terminal.zig").Terminal;
 pub const Engine = struct {
     allocator: Allocator,
     blockers: entt.MultiView(2, 0),
+    carried_items: entt.MultiView(2, 0),
     drawables: entt.MultiView(2, 0),
     enemies: entt.MultiView(2, 0),
     event_manager: EventManager,
+    floor_items: entt.MultiView(2, 0),
     map: GameMap,
     message_log: MessageLog,
     mouse_location: Point,
@@ -39,13 +41,12 @@ pub const Engine = struct {
     pub fn init(allocator: Allocator, event_manager: EventManager, map: GameMap, registry: *Registry, terminal: Terminal) !Engine {
         return Engine{
             .allocator = allocator,
-            .blockers = registry.view(.{
-                c.BlocksMovement,
-                c.Position,
-            }, .{}),
+            .blockers = registry.view(.{ c.BlocksMovement, c.Position }, .{}),
+            .carried_items = registry.view(.{ c.Carried, c.Item }, .{}),
             .drawables = registry.view(.{ c.Glyph, c.Position }, .{}),
             .enemies = registry.view(.{ c.IsEnemy, c.Named }, .{}),
             .event_manager = event_manager,
+            .floor_items = registry.view(.{ c.Item, c.Position }, .{}),
             .map = map,
             .message_log = try MessageLog.init(allocator),
             .mouse_location = .{ .x = 0, .y = 0 },
@@ -94,7 +95,7 @@ pub const Engine = struct {
             }
         }
 
-        try self.message_log.render(&self.terminal, 21, 45, 40, 5);
+        try self.message_log.render(&self.terminal, 21, 45, @intCast(self.terminal.width - 21), 5);
 
         const fighter = self.registry.getConst(c.Fighter, self.player);
         try rf.render_bar(&self.terminal, fighter.hp, fighter.max_hp, 20);
@@ -134,14 +135,15 @@ pub const Engine = struct {
         }
     }
 
-    fn handle_enemy_turns(self: *Engine) !void {
+    pub fn handle_enemy_turns(self: *Engine) !void {
         var iter = self.enemies.entityIterator();
         while (iter.next()) |entity| {
             if (self.registry.has(c.BaseAI, entity)) try ai.base_ai(self, entity);
         }
     }
 
-    fn perform_action(self: *Engine, cmd: Action) !void {
+    pub fn perform_action(self: *Engine, cmd: Action) !void {
+        const position = self.registry.get(c.Position, self.player);
         var spend_turn = false;
 
         switch (cmd) {
@@ -149,9 +151,8 @@ pub const Engine = struct {
                 self.running = false;
                 return;
             },
-            .movement => |move| {
-                const position = self.registry.get(c.Position, self.player);
 
+            .movement => |move| {
                 const dest_x = position.x + move.dx;
                 const dest_y = position.y + move.dy;
 
@@ -167,6 +168,39 @@ pub const Engine = struct {
                     }
                 }
             },
+
+            .pickup => {
+                const backpack = self.registry.getConst(c.Inventory, self.player);
+
+                const carried = try self.get_carried_items(self.player);
+                var carry_count = carried.len;
+                self.allocator.free(carried);
+
+                const items = try self.get_items_at_location(position.x, position.y);
+                defer self.allocator.free(items);
+                for (items) |item| {
+                    if (backpack.capacity <= carry_count) {
+                        try self.impossible("Your inventory is full.", .{});
+                        break;
+                    }
+
+                    const name = self.registry.getConst(c.Named, item);
+                    self.registry.remove(c.Position, item);
+                    self.registry.add(item, c.Carried{ .owner = self.player });
+                    try self.add_to_log("You pick up the {s}.", .{name.name}, colours.White, true);
+                    carry_count += 1;
+                    spend_turn = true;
+                }
+
+                if (items.len == 0)
+                    try self.impossible("There's nothing here to pick up.", .{});
+            },
+
+            .use => |item| {
+                // TODO
+                _ = item;
+            },
+
             .wait => {
                 spend_turn = true;
             },
@@ -204,9 +238,34 @@ pub const Engine = struct {
         return null;
     }
 
+    pub fn get_items_at_location(self: *Engine, x: GameMap.Coord, y: GameMap.Coord) !std.ArrayList(Entity).Slice {
+        var items = std.ArrayList(Entity).init(self.allocator);
+        var iter = self.floor_items.entityIterator();
+        while (iter.next()) |entity| {
+            const position = self.registry.getConst(c.Position, entity);
+            if (position.x == x and position.y == y) try items.append(entity);
+        }
+
+        return items.toOwnedSlice();
+    }
+
+    pub fn get_carried_items(self: *Engine, owner: Entity) !std.ArrayList(Entity).Slice {
+        var items = std.ArrayList(Entity).init(self.allocator);
+        var iter = self.carried_items.entityIterator();
+        while (iter.next()) |entity| {
+            if (self.registry.getConst(c.Carried, entity).owner == owner) try items.append(entity);
+        }
+
+        return items.toOwnedSlice();
+    }
+
     pub fn add_to_log(self: *Engine, comptime fmt: []const u8, args: anytype, fg: RGB8, stack: bool) !void {
         const text = try std.fmt.allocPrint(self.allocator, fmt, args);
         try self.message_log.add(text, fg, stack);
+    }
+
+    pub fn impossible(self: *Engine, comptime fmt: []const u8, args: anytype) !void {
+        return self.add_to_log(fmt, args, colours.Impossible, true);
     }
 
     pub fn get_names_at_location(self: *Engine, x: GameMap.Coord, y: GameMap.Coord) !?[]const u8 {

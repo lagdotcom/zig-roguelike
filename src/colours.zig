@@ -15,7 +15,12 @@ pub const EnemyAttack: RGB8 = .{ .r = 0xff, .g = 0xc0, .b = 0xc0 };
 pub const PlayerDie: RGB8 = .{ .r = 0xff, .g = 0x30, .b = 0x30 };
 pub const EnemyDie: RGB8 = .{ .r = 0xff, .g = 0xa0, .b = 0x30 };
 
+pub const Invalid: RGB8 = .{ .r = 0xff, .g = 0xff, .b = 0 };
+pub const Impossible: RGB8 = .{ .r = 0x80, .g = 0x80, .b = 0x80 };
+pub const Error: RGB8 = .{ .r = 0xff, .g = 0x40, .b = 0x40 };
+
 pub const WelcomeText: RGB8 = .{ .r = 0x20, .g = 0xa0, .b = 0xff };
+pub const HealthRecovered: RGB8 = .{ .r = 0, .g = 0xff, .b = 0 };
 
 pub const BarText = White;
 pub const BarFilled: RGB8 = .{ .r = 0, .g = 0x60, .b = 0 };

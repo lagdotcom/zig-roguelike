@@ -59,7 +59,17 @@ fn setup() !Engine {
     var reg = Registry.init(allocator);
     var map = try GameMap.init(allocator, 80, 43);
     var start = c.Position{ .x = 0, .y = 0 };
-    try procgen.generate_dungeon(&reg, rand, &map, 10, 6, 30, 2, &start);
+    try procgen.generate_dungeon(
+        &reg,
+        rand,
+        &map,
+        10,
+        6,
+        30,
+        2,
+        2,
+        &start,
+    );
 
     var engine = try Engine.init(allocator, events, map, &reg, term);
 
@@ -70,7 +80,8 @@ fn setup() !Engine {
         .colour = co.White,
         .order = c.RenderOrder.Actor,
     });
-    reg.add(player, c.Fighter{ .hp = 30, .max_hp = 30, .defense = 2, .power = 5 });
+    reg.add(player, c.Fighter{ .hp = 30, .max_hp = 30, .defence = 2, .power = 5 });
+    reg.add(player, c.Inventory{ .capacity = 26 });
     engine.setPlayer(player);
 
     try engine.message_log.add("Hello and welcome, adventurer, to yet another dungeon!", co.WelcomeText, false);
