@@ -9,6 +9,7 @@ const c = @import("components.zig");
 const GameMap = @import("GameMap.zig").GameMap;
 const Point = @import("common.zig").Point;
 const t = @import("Tile.zig");
+const RandomTable = @import("RandomTable.zig").RandomTable;
 
 pub const RectangularRoom = struct {
     x1: GameMap.Coord,
@@ -146,9 +147,21 @@ fn carve_straight_line(map: *GameMap, start: Point, end: Point) !void {
     }
 }
 
-fn place_entities(reg: *Registry, rand: Random, room: RectangularRoom, map: *GameMap, maximum_monsters: usize, maximum_items: usize) !void {
+const Spawner = struct { init: *const fn (reg: *Registry, e: Entity) void };
+
+fn place_entities(
+    reg: *Registry,
+    rand: Random,
+    room: RectangularRoom,
+    map: *GameMap,
+    maximum_monsters: usize,
+    maximum_items: usize,
+) !void {
     const number_of_monsters = rand.intRangeAtMost(usize, 0, maximum_monsters);
-    const number_of_items = rand.intRangeAtMost(usize, 0, maximum_items);
+    var monster_table = RandomTable(Spawner, i32).init(reg.allocator);
+    defer monster_table.deinit();
+    try monster_table.add(.{ .init = setup_orc }, 4);
+    try monster_table.add(.{ .init = setup_troll }, 1);
 
     for (0..number_of_monsters) |_| {
         const x = rand.intRangeAtMost(GameMap.Coord, room.x1 + 1, room.x2 - 1);
@@ -157,14 +170,14 @@ fn place_entities(reg: *Registry, rand: Random, room: RectangularRoom, map: *Gam
         if (!map.is_blocked(x, y)) {
             try map.set_blocked(x, y);
             const monster = spawn_monster(reg, x, y);
-
-            if (rand.float(f32) < 0.8) {
-                setup_orc(reg, monster);
-            } else {
-                setup_troll(reg, monster);
-            }
+            monster_table.get(rand).init(reg, monster);
         }
     }
+
+    const number_of_items = rand.intRangeAtMost(usize, 0, maximum_items);
+    var item_table = RandomTable(Spawner, i32).init(reg.allocator);
+    defer item_table.deinit();
+    try item_table.add(.{ .init = setup_health_potion }, 1);
 
     for (0..number_of_items) |_| {
         const x = rand.intRangeAtMost(GameMap.Coord, room.x1 + 1, room.x2 - 1);
@@ -173,8 +186,7 @@ fn place_entities(reg: *Registry, rand: Random, room: RectangularRoom, map: *Gam
         if (!map.is_blocked(x, y)) {
             try map.set_blocked(x, y);
             const item = spawn_item(reg, x, y);
-
-            setup_health_potion(reg, item);
+            item_table.get(rand).init(reg, item);
         }
     }
 }

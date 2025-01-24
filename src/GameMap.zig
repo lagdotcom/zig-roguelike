@@ -6,7 +6,7 @@ const Set = @import("ziglangSet").Set;
 const t = @import("Tile.zig");
 const Terminal = @import("Terminal.zig").Terminal;
 
-const p = @import("procgen.zig");
+const gen = @import("procedural_generation.zig");
 
 const common = @import("common.zig");
 
@@ -97,7 +97,7 @@ pub const GameMap = struct {
         }
     }
 
-    pub fn carve(self: GameMap, room: p.RectangularRoom) !void {
+    pub fn carve(self: GameMap, room: gen.RectangularRoom) !void {
         var iter = room.inner().iterate();
         while (iter.next()) |point| {
             try self.set_tile(point.x, point.y, t.floor);

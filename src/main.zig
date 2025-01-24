@@ -27,7 +27,7 @@ const Engine = @import("Engine.zig").Engine;
 const EventManager = @import("console.zig").EventManager;
 const GameMap = @import("GameMap.zig").GameMap;
 const input_handlers = @import("input_handlers.zig");
-const procgen = @import("procgen.zig");
+const gen = @import("procedural_generation.zig");
 const Terminal = @import("Terminal.zig").Terminal;
 
 var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
@@ -59,7 +59,7 @@ fn setup() !Engine {
     var reg = Registry.init(allocator);
     var map = try GameMap.init(allocator, 80, 43);
     var start = c.Position{ .x = 0, .y = 0 };
-    try procgen.generate_dungeon(
+    try gen.generate_dungeon(
         &reg,
         rand,
         &map,
