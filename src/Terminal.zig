@@ -2,8 +2,8 @@ const std = @import("std");
 
 const ansi = @import("ansi.zig");
 const arch = @import("arch.zig");
-const co = @import("colours.zig");
-const RGB8 = co.RGB8;
+const col = @import("colours.zig");
+const RGB8 = col.RGB8;
 
 pub const Terminal = struct {
     buffer: std.io.BufferedWriter(4096, arch.File.Writer),
@@ -56,7 +56,7 @@ pub const Terminal = struct {
     }
 
     pub fn clear(self: *Terminal) !void {
-        try self.set_background_colour(co.black);
+        try self.set_background_colour(col.black);
         try self.at(0, 0);
         _ = try self.buffer.write(ansi.erase_in_display_to_end);
     }

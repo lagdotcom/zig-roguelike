@@ -3,7 +3,7 @@ const Entity = @import("entt").Entity;
 
 const Engine = @import("Engine.zig").Engine;
 const c = @import("components.zig");
-const co = @import("colours.zig");
+const col = @import("colours.zig");
 
 pub fn attack(e: *Engine, attack_entity: Entity, target_entity: Entity) !void {
     const attacker = e.registry.tryGetConst(c.Fighter, attack_entity);
@@ -15,7 +15,7 @@ pub fn attack(e: *Engine, attack_entity: Entity, target_entity: Entity) !void {
     const attacker_name = e.get_name(attack_entity);
     const target_name = e.get_name(target_entity);
 
-    const fg = if (e.registry.has(c.IsPlayer, attack_entity)) co.player_attack else co.enemy_attack;
+    const fg = if (e.registry.has(c.IsPlayer, attack_entity)) col.player_attack else col.enemy_attack;
     const damage = attacker.?.power - target.?.defence;
     if (damage > 0) {
         try e.add_to_log("{s} attacks {s} for {d} hit points", .{ attacker_name, target_name, damage }, fg, true);
@@ -30,7 +30,7 @@ pub fn attack(e: *Engine, attack_entity: Entity, target_entity: Entity) !void {
 pub fn kill(e: *Engine, target_entity: Entity) !void {
     const target_name = e.get_name(target_entity);
     const is_dead_player = e.registry.has(c.IsPlayer, target_entity);
-    const fg = if (is_dead_player) co.player_die else co.enemy_die;
+    const fg = if (is_dead_player) col.player_die else col.enemy_die;
 
     const maybe_position = e.registry.tryGetConst(c.Position, target_entity);
     if (maybe_position) |position| {

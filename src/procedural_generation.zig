@@ -6,10 +6,14 @@ const Entity = entt.Entity;
 const Registry = entt.Registry;
 
 const c = @import("components.zig");
+const col = @import("colours.zig");
 const GameMap = @import("GameMap.zig").GameMap;
 const Point = @import("common.zig").Point;
 const t = @import("Tile.zig");
 const RandomTable = @import("RandomTable.zig").RandomTable;
+const spawn = @import("spawn.zig");
+const monster = @import("monsters.zig");
+const item = @import("items.zig");
 
 pub const RectangularRoom = struct {
     x1: GameMap.Coord,
@@ -147,8 +151,6 @@ fn carve_straight_line(map: *GameMap, start: Point, end: Point) !void {
     }
 }
 
-const Spawner = struct { init: *const fn (reg: *Registry, e: Entity) void };
-
 fn place_entities(
     reg: *Registry,
     rand: Random,
@@ -158,10 +160,10 @@ fn place_entities(
     maximum_items: usize,
 ) !void {
     const number_of_monsters = rand.intRangeAtMost(usize, 0, maximum_monsters);
-    var monster_table = RandomTable(Spawner, i32).init(reg.allocator);
+    var monster_table = RandomTable(spawn.Spawner, i32).init(reg.allocator);
     defer monster_table.deinit();
-    try monster_table.add(.{ .init = setup_orc }, 4);
-    try monster_table.add(.{ .init = setup_troll }, 1);
+    try monster_table.add(monster.orc, 4);
+    try monster_table.add(monster.troll, 1);
 
     for (0..number_of_monsters) |_| {
         const x = rand.intRangeAtMost(GameMap.Coord, room.x1 + 1, room.x2 - 1);
@@ -169,15 +171,17 @@ fn place_entities(
 
         if (!map.is_blocked(x, y)) {
             try map.set_blocked(x, y);
-            const monster = spawn_monster(reg, x, y);
-            monster_table.get(rand).init(reg, monster);
+            const e = spawn.monster(reg, x, y);
+            monster_table.get(rand).init(reg, e);
         }
     }
 
     const number_of_items = rand.intRangeAtMost(usize, 0, maximum_items);
-    var item_table = RandomTable(Spawner, i32).init(reg.allocator);
+    var item_table = RandomTable(spawn.Spawner, i32).init(reg.allocator);
     defer item_table.deinit();
-    try item_table.add(.{ .init = setup_health_potion }, 1);
+    try item_table.add(item.health_potion, 1);
+    try item_table.add(item.magic_missile_scroll, 1);
+    try item_table.add(item.fireball_scroll, 1);
 
     for (0..number_of_items) |_| {
         const x = rand.intRangeAtMost(GameMap.Coord, room.x1 + 1, room.x2 - 1);
@@ -185,56 +189,8 @@ fn place_entities(
 
         if (!map.is_blocked(x, y)) {
             try map.set_blocked(x, y);
-            const item = spawn_item(reg, x, y);
-            item_table.get(rand).init(reg, item);
+            const e = spawn.item(reg, x, y);
+            item_table.get(rand).init(reg, e);
         }
     }
-}
-
-fn spawn_monster(reg: *Registry, x: i16, y: i16) Entity {
-    const monster = reg.create();
-    reg.add(monster, c.Position{ .x = x, .y = y });
-    reg.add(monster, c.BlocksMovement{});
-    reg.add(monster, c.IsEnemy{});
-    return monster;
-}
-
-fn setup_orc(reg: *Registry, e: Entity) void {
-    reg.add(e, c.Glyph{
-        .ch = 'o',
-        .colour = .{ .r = 63, .g = 127, .b = 63 },
-        .order = c.RenderOrder.Actor,
-    });
-    reg.add(e, c.Named{ .name = "Orc" });
-    reg.add(e, c.Fighter{ .hp = 10, .max_hp = 10, .defence = 0, .power = 3 });
-    reg.add(e, c.BaseAI{});
-}
-
-fn setup_troll(reg: *Registry, e: Entity) void {
-    reg.add(e, c.Glyph{
-        .ch = 'T',
-        .colour = .{ .r = 0, .g = 127, .b = 0 },
-        .order = c.RenderOrder.Actor,
-    });
-    reg.add(e, c.Named{ .name = "Troll" });
-    reg.add(e, c.Fighter{ .hp = 16, .max_hp = 16, .defence = 1, .power = 4 });
-    reg.add(e, c.BaseAI{});
-}
-
-fn spawn_item(reg: *Registry, x: i16, y: i16) Entity {
-    const item = reg.create();
-    reg.add(item, c.Position{ .x = x, .y = y });
-    reg.add(item, c.Item{});
-    return item;
-}
-
-fn setup_health_potion(reg: *Registry, e: Entity) void {
-    reg.add(e, c.Glyph{
-        .ch = '!',
-        .colour = .{ .r = 127, .g = 0, .b = 255 },
-        .order = c.RenderOrder.Item,
-    });
-    reg.add(e, c.Named{ .name = "Health Potion" });
-    reg.add(e, c.Consumable{});
-    reg.add(e, c.HealingItem{ .amount = 4 });
 }

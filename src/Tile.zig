@@ -1,9 +1,9 @@
-const colours = @import("colours.zig");
+const col = @import("colours.zig");
 
 const TileGraphics = struct {
     ch: u8,
-    fg: colours.RGB8,
-    bg: colours.RGB8,
+    fg: col.RGB8,
+    bg: col.RGB8,
 };
 
 pub const Tile = struct {
@@ -13,17 +13,17 @@ pub const Tile = struct {
     light: TileGraphics,
 };
 
-pub const shroud: TileGraphics = .{ .ch = ' ', .fg = colours.white, .bg = colours.black };
+pub const shroud: TileGraphics = .{ .ch = ' ', .fg = col.white, .bg = col.black };
 
 pub const floor: Tile = .{
     .walkable = true,
     .transparent = true,
-    .dark = .{ .ch = ' ', .fg = colours.white, .bg = colours.light_blue },
-    .light = .{ .ch = ' ', .fg = colours.white, .bg = colours.light_yellow },
+    .dark = .{ .ch = ' ', .fg = col.white, .bg = col.light_blue },
+    .light = .{ .ch = ' ', .fg = col.white, .bg = col.light_yellow },
 };
 pub const wall: Tile = .{
     .walkable = false,
     .transparent = false,
-    .dark = .{ .ch = ' ', .fg = colours.white, .bg = colours.dark_blue },
-    .light = .{ .ch = ' ', .fg = colours.white, .bg = colours.dark_yellow },
+    .dark = .{ .ch = ' ', .fg = col.white, .bg = col.dark_blue },
+    .light = .{ .ch = ' ', .fg = col.white, .bg = col.dark_yellow },
 };

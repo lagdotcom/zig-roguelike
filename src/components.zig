@@ -1,6 +1,6 @@
 const Entity = @import("entt").Entity;
 
-const colours = @import("colours.zig");
+const col = @import("colours.zig");
 const Point = @import("common.zig").Point;
 
 pub const RenderOrder = enum(u8) {
@@ -10,7 +10,7 @@ pub const RenderOrder = enum(u8) {
 };
 
 // visuals
-pub const Glyph = struct { ch: u8, colour: colours.RGB8, order: RenderOrder };
+pub const Glyph = struct { ch: u8, colour: col.RGB8, order: RenderOrder };
 pub const Named = struct { name: []const u8 };
 pub const Position = Point;
 
@@ -24,8 +24,11 @@ pub const IsEnemy = struct {};
 pub const IsPlayer = struct {};
 
 // items
+pub const AreaOfEffect = struct { radius: i16 };
 pub const Carried = struct { owner: Entity };
 pub const Consumable = struct {};
+pub const DamagingItem = struct { amount: i16 };
 pub const HealingItem = struct { amount: i16 };
 pub const Inventory = struct { capacity: i16 };
 pub const Item = struct {};
+pub const RangedEffect = struct { range: i16 };

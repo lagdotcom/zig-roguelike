@@ -55,3 +55,21 @@ pub fn drop_from_inventory(event: windows.KEY_EVENT_RECORD_W) ?Action {
         else => null,
     };
 }
+
+pub fn show_targeting(event: windows.KEY_EVENT_RECORD_W) ?Action {
+    // ignore keyup events
+    if (event.bKeyDown == 0) return null;
+
+    return switch (event.wVirtualKeyCode) {
+        .Escape => .cancel_menu,
+
+        .Left => .{ .cursor_movement = .{ .dx = -1, .dy = 0 } },
+        .Up => .{ .cursor_movement = .{ .dx = 0, .dy = -1 } },
+        .Right => .{ .cursor_movement = .{ .dx = 1, .dy = 0 } },
+        .Down => .{ .cursor_movement = .{ .dx = 0, .dy = 1 } },
+
+        .Return, .Space => .confirm_target,
+
+        else => null,
+    };
+}

@@ -1,14 +1,12 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
-
 const Set = @import("ziglangSet").Set;
 
+const col = @import("colours.zig");
+const common = @import("common.zig");
+const gen = @import("procedural_generation.zig");
 const t = @import("Tile.zig");
 const Terminal = @import("Terminal.zig").Terminal;
-
-const gen = @import("procedural_generation.zig");
-
-const common = @import("common.zig");
 
 pub const GameMap = struct {
     pub const Coord = i16;
@@ -46,6 +44,14 @@ pub const GameMap = struct {
 
     pub inline fn contains(self: GameMap, x: Coord, y: Coord) bool {
         return x >= 0 and y >= 0 and x < self.width and y < self.height;
+    }
+
+    pub inline fn clamp_x(self: GameMap, x: Coord) Coord {
+        return @min(self.width - 1, @max(x, 0));
+    }
+
+    pub inline fn clamp_y(self: GameMap, y: Coord) Coord {
+        return @min(self.height - 1, @max(y, 0));
     }
 
     pub inline fn get_index(self: GameMap, x: Coord, y: Coord) Index {
@@ -104,7 +110,7 @@ pub const GameMap = struct {
         }
     }
 
-    pub fn draw(self: GameMap, term: *Terminal) !void {
+    pub fn draw(self: GameMap, term: *Terminal, bg_overrides: Set(Index), bg_override_colour: col.RGB8) !void {
         var x: Coord = 0;
         var y: Coord = 0;
 
@@ -114,8 +120,9 @@ pub const GameMap = struct {
             const explored = self.explored[index];
 
             const glyph = if (visible) tile.light else if (explored) tile.dark else t.shroud;
+            const bg = if (bg_overrides.contains(index)) bg_override_colour else glyph.bg;
 
-            try term.set_char(x, y, glyph.fg, glyph.bg, glyph.ch);
+            try term.set_char(x, y, glyph.fg, bg, glyph.ch);
 
             x += 1;
             if (x >= self.width) {

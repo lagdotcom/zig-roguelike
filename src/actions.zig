@@ -11,4 +11,7 @@ pub const Action = union(enum) {
     use_from_inventory: struct { index: usize },
     show_drop_inventory: void,
     drop_from_inventory: struct { index: usize },
+
+    cursor_movement: struct { dx: i8, dy: i8 },
+    confirm_target: void,
 };

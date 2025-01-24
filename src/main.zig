@@ -22,7 +22,7 @@ pub fn myLogFn(
 }
 
 const c = @import("components.zig");
-const co = @import("colours.zig");
+const col = @import("colours.zig");
 const Engine = @import("Engine.zig").Engine;
 const EventManager = @import("console.zig").EventManager;
 const GameMap = @import("GameMap.zig").GameMap;
@@ -75,16 +75,13 @@ fn setup() !Engine {
 
     const player = reg.create();
     reg.add(player, start);
-    reg.add(player, c.Glyph{
-        .ch = '@',
-        .colour = co.white,
-        .order = c.RenderOrder.Actor,
-    });
+    reg.add(player, c.Glyph{ .ch = '@', .colour = col.white, .order = c.RenderOrder.Actor });
+    reg.add(player, c.Named{ .name = "Player" });
     reg.add(player, c.Fighter{ .hp = 30, .max_hp = 30, .defence = 2, .power = 5 });
     reg.add(player, c.Inventory{ .capacity = 26 });
     engine.set_player(player);
 
-    try engine.message_log.add("Hello and welcome, adventurer, to yet another dungeon!", co.welcome_text, false);
+    try engine.message_log.add("Hello and welcome, adventurer, to yet another dungeon!", col.welcome_text, false);
 
     try engine.render();
     return engine;

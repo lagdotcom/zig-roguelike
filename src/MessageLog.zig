@@ -1,13 +1,12 @@
 const std = @import("std");
 
-const co = @import("colours.zig");
-const RGB8 = co.RGB8;
+const col = @import("colours.zig");
 const Terminal = @import("Terminal.zig").Terminal;
 const WordWrapper = @import("WordWrapper.zig").WordWrapper;
 
 const Message = struct {
     plain_text: []const u8,
-    fg: RGB8,
+    fg: col.RGB8,
     count: usize,
 };
 
@@ -22,7 +21,7 @@ pub const MessageLog = struct {
         self.messages.deinit();
     }
 
-    pub fn add(self: *MessageLog, text: []const u8, fg: RGB8, stack: bool) !void {
+    pub fn add(self: *MessageLog, text: []const u8, fg: col.RGB8, stack: bool) !void {
         if (stack) {
             if (self.messages.getLastOrNull()) |top| {
                 if (std.mem.eql(u8, text, top.plain_text)) {
@@ -39,7 +38,7 @@ pub const MessageLog = struct {
         const allocator = self.messages.allocator;
         var y_offset: i16 = @intCast(height);
 
-        try terminal.set_background_colour(co.black);
+        try terminal.set_background_colour(col.black);
         try terminal.draw_rectangle(x, y, width, height, ' ');
 
         var iter = std.mem.reverseIterator(self.messages.items);
