@@ -3,13 +3,11 @@ const Engine = @import("Engine.zig").Engine;
 const entt = @import("entt");
 const Entity = entt.Entity;
 
-const GameMap = @import("GameMap.zig").GameMap;
-
-const c = @import("components.zig");
-
 const astar = @import("algo/astar.zig");
-
 const combat = @import("combat.zig");
+const c = @import("components.zig");
+const col = @import("colours.zig");
+const GameMap = @import("GameMap.zig").GameMap;
 
 const Graph = struct {
     const Iterator = struct {
@@ -74,6 +72,17 @@ const Graph = struct {
 pub fn base_ai(e: *Engine, entity: Entity) !void {
     var pos = e.registry.get(c.Position, entity);
     if (!e.map.is_visible(pos.x, pos.y)) return;
+
+    if (e.registry.tryGet(c.Confused, entity)) |confused| {
+        confused.duration -= 1;
+
+        if (confused.duration < 1) {
+            e.registry.remove(c.Confused, entity);
+            try e.add_to_log("{s} no longer looks confused.", .{e.get_name(entity)}, col.white, true);
+        }
+
+        return;
+    }
 
     const playerPos = e.registry.getConst(c.Position, e.player);
 

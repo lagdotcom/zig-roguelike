@@ -182,6 +182,7 @@ fn place_entities(
     try item_table.add(item.health_potion, 1);
     try item_table.add(item.magic_missile_scroll, 1);
     try item_table.add(item.fireball_scroll, 1);
+    try item_table.add(item.confusion_scroll, 1);
 
     for (0..number_of_items) |_| {
         const x = rand.intRangeAtMost(GameMap.Coord, room.x1 + 1, room.x2 - 1);

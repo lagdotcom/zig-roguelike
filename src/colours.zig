@@ -6,6 +6,7 @@ pub const black = RGB8{ .r = 0, .g = 0, .b = 0 };
 pub const cyan = RGB8{ .r = 0, .g = 255, .b = 255 };
 pub const red = RGB8{ .r = 255, .g = 0, .b = 0 };
 pub const orange = RGB8{ .r = 255, .g = 127, .b = 0 };
+pub const pink = RGB8{ .r = 255, .g = 192, .b = 255 };
 
 pub const light_blue = RGB8{ .r = 50, .g = 50, .b = 100 };
 pub const dark_blue = RGB8{ .r = 0, .g = 0, .b = 100 };

@@ -26,9 +26,13 @@ pub const IsPlayer = struct {};
 // items
 pub const AreaOfEffect = struct { radius: i16 };
 pub const Carried = struct { owner: Entity };
+pub const ConfusionEffect = struct { duration: i16 };
 pub const Consumable = struct {};
 pub const DamagingItem = struct { amount: i16 };
 pub const HealingItem = struct { amount: i16 };
 pub const Inventory = struct { capacity: i16 };
 pub const Item = struct {};
 pub const RangedEffect = struct { range: i16 };
+
+// effects
+pub const Confused = struct { duration: i16 };

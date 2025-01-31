@@ -36,3 +36,12 @@ fn setup_fireball_scroll(reg: *Registry, e: Entity) void {
     reg.add(e, c.AreaOfEffect{ .radius = 3 });
 }
 pub const fireball_scroll = Spawner{ .init = setup_fireball_scroll };
+
+fn setup_confusion_scroll(reg: *Registry, e: Entity) void {
+    reg.add(e, c.Glyph{ .ch = ')', .colour = col.pink, .order = c.RenderOrder.Item });
+    reg.add(e, c.Named{ .name = "Confusion Scroll" });
+    reg.add(e, c.Consumable{});
+    reg.add(e, c.RangedEffect{ .range = 6 });
+    reg.add(e, c.ConfusionEffect{ .duration = 4 });
+}
+pub const confusion_scroll = Spawner{ .init = setup_confusion_scroll };

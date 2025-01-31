@@ -246,6 +246,8 @@ pub const Engine = struct {
         const position = self.registry.get(c.Position, self.player);
         var spend_turn = false;
 
+        // TODO Confused on player
+
         switch (cmd) {
             .escape => {
                 self.running = false;
@@ -440,6 +442,12 @@ pub const Engine = struct {
 
                     if (final_hp <= 0) try combat.kill(self, target);
                 }
+            }
+
+            if (self.registry.tryGetConst(c.ConfusionEffect, item)) |effect| {
+                spend_turn = true;
+                self.registry.add(target, c.Confused{ .duration = effect.duration });
+                try self.add_to_log("You use {s} on {s}, confusing them.", .{ self.get_name(item), self.get_name(target) }, col.white, true);
             }
         }
 
