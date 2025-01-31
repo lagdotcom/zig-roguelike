@@ -5,7 +5,7 @@ const Entity = entt.Entity;
 const Registry = entt.Registry;
 const Set = @import("ziglangSet").Set;
 
-const Action = @import("actions.zig").Action;
+const actions = @import("actions.zig");
 const ai = @import("ai.zig");
 const arch = @import("arch.zig");
 const BGOverlay = @import("GameMap.zig").BGOverlay;
@@ -16,7 +16,6 @@ const combat = @import("combat.zig");
 const EventManager = @import("console.zig").EventManager;
 const fov = @import("algo/fov.zig");
 const GameMap = @import("GameMap.zig").GameMap;
-const geo = @import("algo/geometry.zig");
 const input_handlers = @import("input_handlers.zig");
 const MessageLog = @import("MessageLog.zig").MessageLog;
 const Point = @import("common.zig").Point;
@@ -238,7 +237,7 @@ pub const Engine = struct {
 
                     if (self.state == .show_targeting) {
                         if (input_handlers.show_targeting_mouse(e)) |cmd|
-                            try self.perform_action(cmd);
+                            try actions.perform_action(self, cmd);
                     }
                 },
 
@@ -254,7 +253,7 @@ pub const Engine = struct {
             .show_targeting => input_handlers.show_targeting_key(e),
             else => input_handlers.in_dungeon(e),
         }) |cmd|
-            try self.perform_action(cmd);
+            try actions.perform_action(self, cmd);
     }
 
     pub fn handle_enemy_turns(self: *Engine) !void {
@@ -262,241 +261,6 @@ pub const Engine = struct {
         while (iter.next()) |entity| {
             if (self.registry.has(c.BaseAI, entity)) try ai.base_ai(self, entity);
         }
-    }
-
-    pub fn perform_action(self: *Engine, cmd: Action) !void {
-        const position = self.registry.get(c.Position, self.player);
-        var spend_turn = false;
-
-        // TODO Confused on player
-
-        switch (cmd) {
-            .escape => {
-                self.running = false;
-                return;
-            },
-
-            .movement => |move| {
-                const dest_x = position.x + move.dx;
-                const dest_y = position.y + move.dy;
-
-                if (self.map.contains(dest_x, dest_y) and self.map.get_tile(dest_x, dest_y).walkable) {
-                    spend_turn = true;
-
-                    if (self.get_fighter_at_location(dest_x, dest_y)) |fighter| {
-                        try combat.attack(self, self.player, fighter);
-                    } else {
-                        position.x = dest_x;
-                        position.y = dest_y;
-                    }
-                }
-            },
-
-            .pickup => {
-                const backpack = self.registry.getConst(c.Inventory, self.player);
-
-                const carried = try self.get_carried_items(self.player);
-                defer self.allocator.free(carried);
-                var carry_count = carried.len;
-
-                const items = try self.get_items_at_location(position.x, position.y);
-                defer self.allocator.free(items);
-                for (items) |item| {
-                    if (backpack.capacity <= carry_count) {
-                        try self.impossible("Your inventory is full.", .{});
-                        break;
-                    }
-
-                    self.registry.remove(c.Position, item);
-                    self.registry.add(item, c.Carried{ .owner = self.player });
-                    try self.add_to_log("You pick up the {s}.", .{self.get_name(item)}, col.white, true);
-                    carry_count += 1;
-                    spend_turn = true;
-                }
-
-                if (items.len == 0)
-                    try self.impossible("There's nothing here to pick up.", .{});
-            },
-
-            .show_use_inventory => {
-                const carried = try self.get_carried_items(self.player);
-                defer self.allocator.free(carried);
-
-                if (carried.len == 0) {
-                    try self.impossible("You're not carrying anything.", .{});
-                } else {
-                    self.state = .use_item;
-                }
-            },
-
-            .use_from_inventory => |u| {
-                const carried = try self.get_carried_items(self.player);
-                defer self.allocator.free(carried);
-
-                if (u.index < carried.len) {
-                    const item = carried[u.index];
-                    spend_turn = try self.use_item(item, null);
-                    if (spend_turn) self.state = .in_dungeon;
-                }
-            },
-
-            .show_drop_inventory => {
-                const carried = try self.get_carried_items(self.player);
-                defer self.allocator.free(carried);
-
-                if (carried.len == 0) {
-                    try self.impossible("You're not carrying anything.", .{});
-                } else {
-                    self.state = .drop_item;
-                }
-            },
-
-            .drop_from_inventory => |u| {
-                const carried = try self.get_carried_items(self.player);
-                defer self.allocator.free(carried);
-
-                if (u.index < carried.len) {
-                    const item = carried[u.index];
-
-                    self.registry.remove(c.Carried, item);
-                    self.registry.add(item, c.Position{ .x = position.x, .y = position.y });
-                    try self.add_to_log("You drop the {s}.", .{self.get_name(item)}, col.white, true);
-
-                    spend_turn = true;
-                    self.state = .in_dungeon;
-                }
-            },
-
-            .cursor_movement => |move| {
-                self.mouse_location = .{
-                    .x = self.map.clamp_x(self.mouse_location.x + move.dx),
-                    .y = self.map.clamp_y(self.mouse_location.y + move.dy),
-                };
-            },
-
-            .cancel_menu => {
-                self.state = .in_dungeon;
-            },
-
-            .confirm_target => {
-                spend_turn = try self.use_item(self.state.show_targeting.item, self.mouse_location);
-                if (spend_turn) self.state = .in_dungeon;
-            },
-
-            .wait => {
-                spend_turn = true;
-            },
-        }
-
-        if (spend_turn) try self.handle_enemy_turns();
-    }
-
-    fn use_item(self: *Engine, item: Entity, maybe_aim: ?Point) !bool {
-        var spend_turn = false;
-        var targets = Set(Entity).init(self.allocator);
-        defer targets.deinit();
-
-        const maybe_ranged = self.registry.tryGetConst(c.RangedEffect, item);
-        const maybe_aoe = self.registry.tryGetConst(c.AreaOfEffect, item);
-
-        if (maybe_aim) |aim| {
-            const aim_index = self.map.get_index(aim.x, aim.y);
-            if (!self.targeting_valid.contains(aim_index)) {
-                try self.impossible("Out of range.", .{});
-                return false;
-            }
-
-            if (maybe_ranged != null) {
-                if (maybe_aoe) |aoe| {
-                    var iter = CircleIterator.init(self.map, aim.x, aim.y, aoe.radius);
-                    while (iter.next()) |point| {
-                        if (self.get_fighter_at_location(point.x, point.y)) |victim| {
-                            _ = try targets.add(victim);
-                        }
-                    }
-                } else if (self.get_fighter_at_location(aim.x, aim.y)) |victim| {
-                    _ = try targets.add(victim);
-                }
-            }
-        } else {
-            if (maybe_ranged) |ranged| {
-                const maybe_area = self.registry.tryGetConst(c.AreaOfEffect, item);
-                const position = self.registry.getConst(c.Position, self.player);
-                self.state = .{ .show_targeting = .{
-                    .range = ranged.range,
-                    .area = if (maybe_area == null) 1 else maybe_area.?.radius,
-                    .item = item,
-                } };
-                self.mouse_location = .{ .x = position.x, .y = position.y };
-                return false;
-            }
-
-            _ = try targets.add(self.player);
-        }
-
-        if (targets.isEmpty()) {
-            try self.impossible("No target.", .{});
-            return false;
-        }
-
-        var tried_to_heal = false;
-        var successful_heals: i16 = 0;
-
-        var tried_to_damage = false;
-        var successful_inflicts: i16 = 0;
-
-        var iter = targets.iterator();
-        while (iter.next()) |p_target| {
-            const target = p_target.*;
-            if (self.registry.tryGetConst(c.HealingItem, item)) |healing| {
-                tried_to_heal = true;
-                if (self.registry.tryGet(c.Fighter, target)) |fighter| {
-                    const final_hp = @min(fighter.max_hp, fighter.hp + healing.amount);
-                    const heal_amount = final_hp - fighter.hp;
-
-                    if (heal_amount > 0) {
-                        spend_turn = true;
-                        successful_heals += 1;
-                        fighter.hp = final_hp;
-                        try self.add_to_log("You use the {s}, healing {d} hp.", .{ self.get_name(item), heal_amount }, col.health_recovered, true);
-                    }
-                }
-            }
-
-            if (self.registry.tryGetConst(c.DamagingItem, item)) |inflict| {
-                tried_to_damage = true;
-                if (self.registry.tryGet(c.Fighter, target)) |fighter| {
-                    const final_hp = fighter.max_hp - inflict.amount;
-
-                    spend_turn = true;
-                    successful_inflicts += 1;
-                    fighter.hp = final_hp;
-                    try self.add_to_log("You use {s} on {s}, inflicting {d} hp.", .{ self.get_name(item), self.get_name(target), inflict.amount }, col.player_attack, true);
-
-                    if (final_hp <= 0) try combat.kill(self, target);
-                }
-            }
-
-            if (self.registry.tryGetConst(c.ConfusionEffect, item)) |effect| {
-                spend_turn = true;
-                self.registry.add(target, c.Confused{ .duration = effect.duration });
-                try self.add_to_log("You use {s} on {s}, confusing them.", .{ self.get_name(item), self.get_name(target) }, col.white, true);
-            }
-        }
-
-        if (!spend_turn) {
-            if (tried_to_heal) {
-                if (targets.contains(self.player)) {
-                    try self.impossible("You don't need healing.", .{});
-                } else {
-                    try self.impossible("Nobody needs healing.", .{});
-                }
-            }
-        } else {
-            if (self.registry.has(c.Consumable, item)) self.registry.destroy(item);
-        }
-
-        return spend_turn;
     }
 
     fn update_fov(self: *Engine) void {
