@@ -8,6 +8,7 @@ const Set = @import("ziglangSet").Set;
 const Action = @import("actions.zig").Action;
 const ai = @import("ai.zig");
 const arch = @import("arch.zig");
+const BGOverlay = @import("GameMap.zig").BGOverlay;
 const CircleIterator = @import("CircleIterator.zig").CircleIterator;
 const c = @import("components.zig");
 const col = @import("colours.zig");
@@ -28,7 +29,7 @@ const GameState = union(enum) {
     in_dungeon: void,
     use_item: void,
     drop_item: void,
-    show_targeting: struct { range: i16, item: Entity },
+    show_targeting: struct { range: i16, area: i16, item: Entity },
 };
 
 pub const Engine = struct {
@@ -48,6 +49,8 @@ pub const Engine = struct {
     registry: *Registry,
     running: bool,
     state: GameState,
+    targeting_area: GameMap.IndexSet,
+    targeting_valid: GameMap.IndexSet,
     terminal: Terminal,
 
     pub fn init(allocator: Allocator, event_manager: EventManager, map: GameMap, registry: *Registry, terminal: Terminal) !Engine {
@@ -68,6 +71,8 @@ pub const Engine = struct {
             .registry = registry,
             .running = false,
             .state = .in_dungeon,
+            .targeting_area = GameMap.IndexSet.init(allocator),
+            .targeting_valid = GameMap.IndexSet.init(allocator),
             .terminal = terminal,
         };
     }
@@ -77,6 +82,8 @@ pub const Engine = struct {
         self.map.deinit();
         self.event_manager.deinit();
         self.message_log.deinit();
+        self.targeting_valid.deinit();
+        self.targeting_area.deinit();
         self.terminal.deinit() catch {};
     }
 
@@ -86,9 +93,11 @@ pub const Engine = struct {
     }
 
     pub fn render(self: *Engine) !void {
-        var highlights = try self.get_target_highlight_set();
-        defer highlights.deinit();
-        try self.map.draw(&self.terminal, highlights, col.targeting_highlight);
+        try self.update_targeting_overlays();
+        try self.map.draw(&self.terminal, &[_]BGOverlay{
+            .{ .indices = self.targeting_area, .bg = col.targeting_aoe },
+            .{ .indices = self.targeting_valid, .bg = col.targeting_highlight },
+        });
 
         try self.terminal.set_foreground_colour(col.white);
 
@@ -96,7 +105,7 @@ pub const Engine = struct {
             try self.terminal.print_at(self.terminal.width - 20, self.terminal.height - 1, "Press ESCAPE to quit", .{});
         }
 
-        try self.render_drawable_entities(highlights);
+        try self.render_drawable_entities();
 
         try self.message_log.render(&self.terminal, 21, 45, @intCast(self.terminal.width - 21), @intCast(self.terminal.height - 45));
 
@@ -108,14 +117,14 @@ pub const Engine = struct {
 
         switch (self.state) {
             .use_item, .drop_item => try self.render_inventory(),
-            .show_targeting => try self.render_targeting(highlights),
+            .show_targeting => try self.render_targeting(),
             else => {},
         }
 
         try self.terminal.present();
     }
 
-    fn render_drawable_entities(self: *Engine, highlights: Set(GameMap.Index)) !void {
+    fn render_drawable_entities(self: *Engine) !void {
         inline for (@typeInfo(c.RenderOrder).Enum.fields) |ro| {
             var iter = self.drawable_view.entityIterator();
             while (iter.next()) |entity| {
@@ -125,11 +134,8 @@ pub const Engine = struct {
                 const pos = self.drawable_view.getConst(c.Position, entity);
 
                 if (self.map.is_visible(pos.x, pos.y) and self.terminal.contains(pos.x, pos.y)) {
-                    const index = self.map.get_index(pos.x, pos.y);
-                    const bg = if (highlights.contains(index)) col.targeting_highlight else t.floor.light.bg;
-
                     try self.terminal.print_at(pos.x, pos.y, "{c}", .{glyph.ch});
-                    try self.terminal.set_char(pos.x, pos.y, glyph.colour, bg, glyph.ch);
+                    try self.terminal.set_char(pos.x, pos.y, glyph.colour, t.floor.light.bg, glyph.ch);
                 }
             }
         }
@@ -167,26 +173,37 @@ pub const Engine = struct {
         }
     }
 
-    fn get_target_highlight_set(self: *Engine) !Set(GameMap.Index) {
-        var set = Set(GameMap.Index).init(self.allocator);
+    fn update_targeting_overlays(self: *Engine) !void {
+        self.targeting_area.clearRetainingCapacity();
+        self.targeting_valid.clearRetainingCapacity();
 
         switch (self.state) {
             .show_targeting => |targeting| {
                 const position = self.registry.getConst(c.Position, self.player);
-                var iter = CircleIterator.init(self.map, position.x, position.y, targeting.range);
-                while (iter.next()) |point| {
+                var valid_iter = CircleIterator.init(self.map, position.x, position.y, targeting.range);
+                while (valid_iter.next()) |point| {
                     if (!self.map.is_visible(point.x, point.y)) continue;
                     const index = self.map.get_index(point.x, point.y);
-                    _ = try set.add(index);
+                    _ = try self.targeting_valid.add(index);
+                }
+
+                if (targeting.area > 1) {
+                    const target_index = self.map.get_index(self.mouse_location.x, self.mouse_location.y);
+                    if (self.targeting_valid.contains(target_index)) {
+                        var area_iter = CircleIterator.init(self.map, self.mouse_location.x, self.mouse_location.y, targeting.area);
+                        while (area_iter.next()) |point| {
+                            if (!self.map.contains(point.x, point.y)) continue;
+                            const index = self.map.get_index(point.x, point.y);
+                            _ = try self.targeting_area.add(index);
+                        }
+                    }
                 }
             },
             else => {},
         }
-
-        return set;
     }
 
-    fn render_targeting(self: *Engine, highlights: Set(GameMap.Index)) !void {
+    fn render_targeting(self: *Engine) !void {
         try self.terminal.set_foreground_colour(col.yellow);
         try self.terminal.set_background_colour(col.black);
         try self.terminal.print_at(5, 0, "Select Target:", .{});
@@ -196,8 +213,8 @@ pub const Engine = struct {
         try self.terminal.set_char(
             self.mouse_location.x,
             self.mouse_location.y,
-            if (highlights.contains(index)) col.targeting_cursor else col.targeting_cursor_invalid,
-            col.targeting_highlight,
+            if (self.targeting_valid.contains(index)) col.targeting_cursor else col.targeting_cursor_invalid,
+            if (self.targeting_area.contains(index)) col.targeting_aoe else col.targeting_highlight,
             'X',
         );
     }
@@ -383,6 +400,12 @@ pub const Engine = struct {
         const maybe_aoe = self.registry.tryGetConst(c.AreaOfEffect, item);
 
         if (maybe_aim) |aim| {
+            const aim_index = self.map.get_index(aim.x, aim.y);
+            if (!self.targeting_valid.contains(aim_index)) {
+                try self.impossible("Out of range.", .{});
+                return false;
+            }
+
             if (maybe_ranged != null) {
                 if (maybe_aoe) |aoe| {
                     var iter = CircleIterator.init(self.map, aim.x, aim.y, aoe.radius);
@@ -397,8 +420,13 @@ pub const Engine = struct {
             }
         } else {
             if (maybe_ranged) |ranged| {
+                const maybe_area = self.registry.tryGetConst(c.AreaOfEffect, item);
                 const position = self.registry.getConst(c.Position, self.player);
-                self.state = .{ .show_targeting = .{ .range = ranged.range, .item = item } };
+                self.state = .{ .show_targeting = .{
+                    .range = ranged.range,
+                    .area = if (maybe_area == null) 1 else maybe_area.?.radius,
+                    .item = item,
+                } };
                 self.mouse_location = .{ .x = position.x, .y = position.y };
                 return false;
             }

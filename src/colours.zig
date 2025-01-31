@@ -31,5 +31,6 @@ pub const bar_filled = RGB8{ .r = 0, .g = 0x60, .b = 0 };
 pub const bar_empty = RGB8{ .r = 0x40, .g = 0x10, .b = 0x10 };
 
 pub const targeting_highlight = RGB8{ .r = 50, .g = 100, .b = 150 };
+pub const targeting_aoe = RGB8{ .r = 150, .g = 50, .b = 100 };
 pub const targeting_cursor = yellow;
 pub const targeting_cursor_invalid = red;

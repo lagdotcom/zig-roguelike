@@ -8,9 +8,15 @@ const gen = @import("procedural_generation.zig");
 const t = @import("Tile.zig");
 const Terminal = @import("Terminal.zig").Terminal;
 
+pub const BGOverlay = struct {
+    indices: GameMap.IndexSet,
+    bg: col.RGB8,
+};
+
 pub const GameMap = struct {
     pub const Coord = i16;
     pub const Index = usize;
+    pub const IndexSet = Set(Index);
 
     allocator: Allocator,
     width: usize,
@@ -19,7 +25,7 @@ pub const GameMap = struct {
     tiles: []t.Tile,
     visible: []bool,
     explored: []bool,
-    blocked: Set(Index),
+    blocked: IndexSet,
 
     pub fn init(allocator: Allocator, width: usize, height: usize) !GameMap {
         const tile_count = width * height;
@@ -32,7 +38,7 @@ pub const GameMap = struct {
             .tiles = try allocator.alloc(t.Tile, tile_count),
             .visible = try allocator.alloc(bool, tile_count),
             .explored = try allocator.alloc(bool, tile_count),
-            .blocked = Set(Index).init(allocator),
+            .blocked = IndexSet.init(allocator),
         };
 
         return map;
@@ -110,7 +116,7 @@ pub const GameMap = struct {
         }
     }
 
-    pub fn draw(self: GameMap, term: *Terminal, bg_overrides: Set(Index), bg_override_colour: col.RGB8) !void {
+    pub fn draw(self: GameMap, term: *Terminal, overlays: []const BGOverlay) !void {
         var x: Coord = 0;
         var y: Coord = 0;
 
@@ -120,7 +126,14 @@ pub const GameMap = struct {
             const explored = self.explored[index];
 
             const glyph = if (visible) tile.light else if (explored) tile.dark else t.shroud;
-            const bg = if (bg_overrides.contains(index)) bg_override_colour else glyph.bg;
+
+            var bg = glyph.bg;
+            for (overlays) |overlay| {
+                if (overlay.indices.contains(index)) {
+                    bg = overlay.bg;
+                    break;
+                }
+            }
 
             try term.set_char(x, y, glyph.fg, bg, glyph.ch);
 
