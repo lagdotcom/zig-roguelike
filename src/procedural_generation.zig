@@ -12,8 +12,8 @@ const Point = @import("common.zig").Point;
 const t = @import("Tile.zig");
 const RandomTable = @import("RandomTable.zig").RandomTable;
 const spawn = @import("spawn.zig");
-const monster = @import("monsters.zig");
-const item = @import("items.zig");
+const monster = @import("entities/monsters.zig");
+const item = @import("entities/items.zig");
 
 pub const RectangularRoom = struct {
     x1: GameMap.Coord,

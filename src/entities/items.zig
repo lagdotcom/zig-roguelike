@@ -2,9 +2,9 @@ const entt = @import("entt");
 const Entity = entt.Entity;
 const Registry = entt.Registry;
 
-const c = @import("components.zig");
-const col = @import("colours.zig");
-const Spawner = @import("spawn.zig").Spawner;
+const c = @import("../components.zig");
+const col = @import("../colours.zig");
+const Spawner = @import("../spawn.zig").Spawner;
 
 fn setup_health_potion(reg: *Registry, e: Entity) void {
     reg.add(e, c.Glyph{
