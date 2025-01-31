@@ -218,6 +218,11 @@ pub const Engine = struct {
                     if (self.map.contains(pos.X, pos.Y)) self.mouse_location = .{ .x = pos.X, .y = pos.Y };
 
                     try self.terminal.print_at(21, 43, "e{d} b{d}: {d},{d}", .{ e.dwEventFlags, e.dwButtonState, e.dwMousePosition.X, e.dwMousePosition.Y });
+
+                    if (self.state == .show_targeting) {
+                        if (input_handlers.show_targeting_mouse(e)) |cmd|
+                            try self.perform_action(cmd);
+                    }
                 },
 
                 else => {},
@@ -229,7 +234,7 @@ pub const Engine = struct {
         if (switch (self.state) {
             .use_item => input_handlers.use_from_inventory(e),
             .drop_item => input_handlers.drop_from_inventory(e),
-            .show_targeting => input_handlers.show_targeting(e),
+            .show_targeting => input_handlers.show_targeting_key(e),
             else => input_handlers.in_dungeon(e),
         }) |cmd|
             try self.perform_action(cmd);

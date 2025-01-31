@@ -329,7 +329,9 @@ class Env {
 
     document.addEventListener("keydown", this.onKey);
     document.addEventListener("keyup", this.onKey);
-    document.addEventListener("mousemove", this.onMouseMove);
+    document.addEventListener("mousemove", this.onMouse);
+    document.addEventListener("mousedown", this.onMouse);
+    document.addEventListener("mouseup", this.onMouse);
   }
 
   get processedInput() {
@@ -379,19 +381,19 @@ class Env {
     }
     this.keyEvents = [];
 
-    if (this.mouseMove && this.mouseInput) {
-      const { x, y } = this.mouseMove;
+    if (this.mouseChange && this.mouseInput) {
+      const { x, y, buttons, moved } = this.mouseChange;
 
       w.WORD(2); // INPUT_RECORD_TYPE.Mouse
       w.align(4);
       w.WORD(x);
       w.WORD(y);
-      w.DWORD(0); // MOUSE_EVENT_RECORD.dwButtonState
+      w.DWORD(buttons); // MOUSE_EVENT_RECORD.dwButtonState
       w.DWORD(flags);
-      w.DWORD(1); // MOUSE_EVENT_FLAGS.MOUSE_MOVED
+      w.DWORD(moved ? 1 : 0); // MOUSE_EVENT_FLAGS.MOUSE_MOVED
       count++;
     }
-    this.mouseMove = undefined;
+    this.mouseChange = undefined;
 
     return count;
   };
@@ -481,9 +483,14 @@ class Env {
    *
    * @param {MouseEvent} e
    */
-  onMouseMove = (e) => {
+  onMouse = (e) => {
     const { x, y } = e.target.dataset;
-    this.mouseMove = { x: parseInt(x), y: parseInt(y) };
+    this.mouseChange = {
+      x: parseInt(x),
+      y: parseInt(y),
+      buttons: e.buttons,
+      moved: e.type === "mousemove",
+    };
   };
 }
 

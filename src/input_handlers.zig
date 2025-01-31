@@ -56,7 +56,7 @@ pub fn drop_from_inventory(event: windows.KEY_EVENT_RECORD_W) ?Action {
     };
 }
 
-pub fn show_targeting(event: windows.KEY_EVENT_RECORD_W) ?Action {
+pub fn show_targeting_key(event: windows.KEY_EVENT_RECORD_W) ?Action {
     // ignore keyup events
     if (event.bKeyDown == 0) return null;
 
@@ -69,6 +69,15 @@ pub fn show_targeting(event: windows.KEY_EVENT_RECORD_W) ?Action {
         .Down => .{ .cursor_movement = .{ .dx = 0, .dy = 1 } },
 
         .Return, .Space => .confirm_target,
+
+        else => null,
+    };
+}
+
+pub fn show_targeting_mouse(event: windows.MOUSE_EVENT_RECORD) ?Action {
+    return switch (event.dwButtonState) {
+        1 => .confirm_target,
+        2 => .cancel_menu,
 
         else => null,
     };
